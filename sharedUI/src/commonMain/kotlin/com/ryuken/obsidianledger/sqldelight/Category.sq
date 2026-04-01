@@ -1,0 +1,56 @@
+CREATE TABLE CategoryEntity (
+    id       TEXT    NOT NULL PRIMARY KEY,
+    name     TEXT    NOT NULL,
+    emoji    TEXT    NOT NULL,
+    colorHex TEXT    NOT NULL DEFAULT '#00C896',
+    isCustom INTEGER NOT NULL DEFAULT 0,   -- 0 = default, 1 = user-created
+    userId   TEXT,                          -- NULL for default categories
+    sortOrder INTEGER NOT NULL DEFAULT 0
+);
+
+-- Seed default categories (insert once on first launch)
+INSERT OR IGNORE INTO CategoryEntity VALUES
+    ('cat_food',        'Food & Dining',  '🍔', '#FF6B6B', 0, NULL, 0),
+    ('cat_transport',   'Transport',      '🚕', '#4ECDC4', 0, NULL, 1),
+    ('cat_shopping',    'Shopping',       '🛍', '#45B7D1', 0, NULL, 2),
+    ('cat_health',      'Health',         '💊', '#96CEB4', 0, NULL, 3),
+    ('cat_bills',       'Bills',          '⚡', '#FFEAA7', 0, NULL, 4),
+    ('cat_housing',     'Housing',        '🏠', '#DDA0DD', 0, NULL, 5),
+    ('cat_dining',      'Fine Dining',    '🍽', '#F0E68C', 0, NULL, 6),
+    ('cat_entertain',   'Entertainment',  '🎬', '#98FB98', 0, NULL, 7),
+    ('cat_savings',     'Savings',        '💰', '#87CEEB', 0, NULL, 8),
+    ('cat_income',      'Income',         '💼', '#00C896', 0, NULL, 9);
+
+-- Queries
+selectAll:
+SELECT *
+FROM   CategoryEntity
+WHERE  userId IS NULL
+    OR userId = :userId
+ORDER BY sortOrder ASC, name ASC;
+
+selectById:
+SELECT *
+FROM   CategoryEntity
+WHERE  id = :id;
+
+selectDefaults:
+SELECT *
+FROM   CategoryEntity
+WHERE  userId IS NULL
+ORDER BY sortOrder ASC;
+
+selectCustomForUser:
+SELECT *
+FROM   CategoryEntity
+WHERE  userId = :userId
+ORDER BY name ASC;
+
+insertCustom:
+INSERT INTO CategoryEntity
+VALUES (?, ?, ?, ?, 1, ?, ?);
+
+delete:
+DELETE FROM CategoryEntity
+WHERE id      = :id
+  AND isCustom = 1;  -- prevent deleting default categories
