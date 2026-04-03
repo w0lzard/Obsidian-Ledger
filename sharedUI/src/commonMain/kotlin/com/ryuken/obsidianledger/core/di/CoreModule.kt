@@ -1,33 +1,39 @@
 package com.ryuken.obsidianledger.core.di
 
-import com.ryuken.obsidianledger.core.database.DatabaseDriverFactory
-import com.ryuken.obsidianledger.core.domain.repository.*
-import com.ryuken.obsidianledger.database.LedgerDatabase
-import io.github.jan_tennert.supabase.SupabaseClient
-import io.github.jan_tennert.supabase.auth.Auth
-import io.github.jan_tennert.supabase.postgrest.Postgrest
-import io.github.jan_tennert.supabase.realtime.Realtime
-import io.github.jan_tennert.supabase.createSupabaseClient
+import com.ryuken.obsidianledger.BuildConfig
+import com.ryuken.obsidianledger.core.database.LedgerDatabase
+import com.ryuken.obsidianledger.core.database.createLedgerDatabase
+import com.ryuken.obsidianledger.core.domain.repository.TransactionRepository
+import com.ryuken.obsidianledger.core.domain.repository.BudgetRepository
+import com.ryuken.obsidianledger.core.domain.repository.CategoryRepository
+import com.ryuken.obsidianledger.core.domain.repository.AuthRepository
+import com.ryuken.obsidianledger.core.domain.repository.ProfileRepository
+import com.ryuken.obsidianledger.core.data.TransactionRepositoryImpl
+import com.ryuken.obsidianledger.core.data.BudgetRepositoryImpl
+import com.ryuken.obsidianledger.core.data.CategoryRepositoryImpl
+import com.ryuken.obsidianledger.core.data.AuthRepositoryImpl
+import com.ryuken.obsidianledger.core.data.ProfileRepositoryImpl
+import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.realtime.Realtime
 import org.koin.dsl.module
+import com.ryuken.obsidianledger.core.network.SupabaseConfig
+
 
 val coreModule = module {
 
     // ── Database ──────────────────────────────────────────────────────
-    single { 
-        val driver = get<DatabaseDriverFactory>().createDriver()
-        LedgerDatabase(driver)
-    }
+    single { createLedgerDatabase(get()) }
     single { get<LedgerDatabase>().transactionEntityQueries }
     single { get<LedgerDatabase>().budgetEntityQueries }
     single { get<LedgerDatabase>().categoryEntityQueries }
 
     // ── Supabase client ───────────────────────────────────────────────
-    // Note: These should ideally be in a BuildConfig or similar, 
-    // but for now we define them or use placeholders.
     single {
         createSupabaseClient(
-            supabaseUrl = "YOUR_SUPABASE_URL",
-            supabaseKey = "YOUR_SUPABASE_ANON_KEY"
+            supabaseUrl = SupabaseConfig.url,
+            supabaseKey = SupabaseConfig.key
         ) {
             install(Auth)
             install(Postgrest)
@@ -36,13 +42,25 @@ val coreModule = module {
     }
 
     // ── Repositories ──────────────────────────────────────────────────
-    // Assuming implementations exist or will be created
-    /*
     single<TransactionRepository> {
         TransactionRepositoryImpl(
-            queries        = get(),
+            db             = get(),
             supabaseClient = get()
         )
     }
-    */
+    single<BudgetRepository> {
+        BudgetRepositoryImpl(
+            db             = get(),
+            supabaseClient = get()
+        )
+    }
+    single<CategoryRepository> {
+        CategoryRepositoryImpl(db = get())
+    }
+    single<AuthRepository> {
+        AuthRepositoryImpl(supabaseClient = get())
+    }
+    single<ProfileRepository> {
+        ProfileRepositoryImpl(supabaseClient = get())
+    }
 }
