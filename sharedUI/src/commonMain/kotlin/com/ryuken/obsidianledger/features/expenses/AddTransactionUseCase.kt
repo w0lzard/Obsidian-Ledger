@@ -7,6 +7,6 @@ class AddTransactionUseCase(
     private val repository: TransactionRepository
 ) {
     suspend operator fun invoke(transaction: Transaction) {
-        repository.insertTransaction(transaction)
+        repository.add(transaction)
     }
 }
