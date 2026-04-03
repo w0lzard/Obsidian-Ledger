@@ -1,24 +1,35 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
+    alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.sqldelight)
-    alias(libs.plugins.android.kmp.library)
+    alias(libs.plugins.buildconfig)
     kotlin("plugin.serialization") version libs.versions.kotlin.get()
+}
+
+sqldelight {
+    databases {
+        create("LedgerDatabase") {
+            packageName.set("com.ryuken.obsidianledger.core.database")
+            srcDirs.setFrom("src/commonMain/database")
+        }
+    }
 }
 
 kotlin {
     android {
         namespace = "com.ryuken.obsidianledger"
         compileSdk = 36
-        minSdk = 23
+        minSdk = 26
     }
 
     listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach {
         it.binaries.framework {
-            baseName = "shared"
+            baseName = "sharedUI"
             isStatic = true
         }
     }
@@ -29,11 +40,13 @@ kotlin {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
+            implementation(compose.materialIconsExtended)
             implementation(libs.compose.resources)
             implementation(libs.compose.ui.tooling.preview)
 
             // SQLDelight
             implementation(libs.sqldelight.runtime)
+            implementation(libs.sqldelight.coroutines)
 
             // Supabase
             implementation(libs.supabase.postgrest)
@@ -46,12 +59,25 @@ kotlin {
             // DI
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
+            implementation(libs.koin.compose.viewmodel)
 
             // Utils
             implementation(libs.datetime)
             implementation(libs.coroutines.core)
             implementation(libs.napier)
             implementation(libs.uuid)
+            implementation(libs.serialization.json)
+
+            // Decompose
+            implementation(libs.decompose.core)
+            implementation(libs.decompose.compose)
+            implementation(libs.essenty.lifecycle)
+
+            // Charts
+            implementation(libs.koalaplot.core)
+
+            // Lifecycle ViewModel (KMP)
+            implementation(libs.lifecycle.viewmodel)
         }
 
         androidMain.dependencies {
@@ -70,10 +96,15 @@ dependencies {
     androidRuntimeClasspath(libs.compose.ui.tooling)
 }
 
-sqldelight {
-    databases {
-        create("LedgerDatabase") {
-            packageName.set("com.ryuken.obsidianledger.database")
-        }
-    }
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+
+buildConfig {
+    packageName.set("com.ryuken.obsidianledger")
+
+    buildConfigField("SUPABASE_URL", localProperties.getProperty("SUPABASE_URL") ?: "")
+    buildConfigField("SUPABASE_KEY", localProperties.getProperty("SUPABASE_KEY") ?: "")
 }
