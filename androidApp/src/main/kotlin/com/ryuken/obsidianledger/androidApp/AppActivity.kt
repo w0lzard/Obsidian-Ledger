@@ -1,34 +1,39 @@
 package com.ryuken.obsidianledger.androidApp
 
-import android.app.Activity
+import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowInsetsControllerCompat
+import com.arkivanov.decompose.defaultComponentContext
 import com.ryuken.obsidianledger.App
+import com.ryuken.obsidianledger.androidApp.di.androidModule
+import com.ryuken.obsidianledger.core.di.initKoin
+import com.ryuken.obsidianledger.navigation.RootComponent
+import org.koin.android.ext.koin.androidContext
 
 class AppActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
-        setContent { 
-            App(onThemeChanged = { ThemeChanged(it) }) 
+
+        val root = RootComponent(
+            componentContext = defaultComponentContext()
+        )
+
+        setContent {
+            App(root = root)
         }
     }
 }
 
-@Composable
-private fun ThemeChanged(isDark: Boolean) {
-    val view = LocalView.current
-    LaunchedEffect(isDark) {
-        val window = (view.context as Activity).window
-        WindowInsetsControllerCompat(window, window.decorView).apply {
-            isAppearanceLightStatusBars = isDark
-            isAppearanceLightNavigationBars = isDark
+class LedgerApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        initKoin(platformModule = androidModule) {
+            androidContext(this@LedgerApplication)
         }
     }
 }
