@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.benasher44.uuid.uuid4
 import com.ryuken.obsidianledger.core.domain.model.Transaction
+import com.ryuken.obsidianledger.core.domain.repository.AuthRepository
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,8 +17,10 @@ import kotlin.time.Clock
 class AddTransactionViewModel(
     private val addTransaction: AddTransactionUseCase,
     private val getCategories: GetCategoriesUseCase,
-    private val userId: String
+    private val authRepo: AuthRepository
 ) : ViewModel() {
+
+    private val userId = authRepo.currentUserId() ?: ""
 
     private val _state = MutableStateFlow(AddTransactionState())
     val state = _state.asStateFlow()
