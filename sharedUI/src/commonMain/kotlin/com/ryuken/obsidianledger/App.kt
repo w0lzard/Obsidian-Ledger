@@ -1,32 +1,30 @@
 package com.ryuken.obsidianledger
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import com.arkivanov.decompose.extensions.compose.stack.Children
 import com.arkivanov.decompose.extensions.compose.stack.animation.slide
 import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
-import com.ryuken.obsidianledger.core.ui.theme.ObsidianLedgerTheme
-import com.ryuken.obsidianledger.feature.auth.AuthScreen
-import com.ryuken.obsidianledger.feature.expenses.AddTransactionScreen
-import com.ryuken.obsidianledger.feature.main.MainScreen
+import com.ryuken.obsidianledger.core.ui.theme.AppTheme
+import com.ryuken.obsidianledger.features.auth.AuthScreen
+import com.ryuken.obsidianledger.features.expenses.AddTransactionScreen
+import com.ryuken.obsidianledger.features.main.MainScreen
 import com.ryuken.obsidianledger.navigation.RootComponent
 import com.ryuken.obsidianledger.navigation.RootComponent.Child
 import org.koin.compose.KoinContext
 
 @Composable
-fun App(root: RootComponent) {
+fun App(
+    root: RootComponent,
+    onThemeChanged: @Composable (isDark: Boolean) -> Unit = {}
+) {
     KoinContext {
-        ObsidianLedgerTheme {
+        AppTheme(onThemeChanged = onThemeChanged) {
             RootNavHost(root = root)
         }
     }
 }
-
 
 @Composable
 private fun RootNavHost(root: RootComponent) {
@@ -42,11 +40,14 @@ private fun RootNavHost(root: RootComponent) {
             )
             is Child.Main           -> MainScreen(
                 component = instance.component,
-                onAddTransaction = { root.navigateTo(RootComponent.Config.AddTransaction) }
+                onAddTransaction = { root.navigateTo(RootComponent.Config.AddTransaction) },
+                onSignedOut = {
+                    // Pop back to auth
+                    root.pop()
+                }
             )
             is Child.AddTransaction -> AddTransactionScreen(
-                component = instance.component,
-                onBack    = { root.pop() }
+                onBack = { root.pop() }
             )
         }
     }
