@@ -1,0 +1,28 @@
+CREATE TABLE BudgetEntity (
+id TEXT NOT NULL PRIMARY KEY,
+categoryId TEXT NOT NULL,
+limitAmount REAL NOT NULL,
+period TEXT NOT NULL DEFAULT 'MONTHLY',
+isDirty INTEGER NOT NULL DEFAULT 1,
+userId TEXT NOT NULL
+);
+
+selectAll:
+SELECT * FROM BudgetEntity WHERE userId = :userId;
+
+budgetWithSpending:
+SELECT b.*, COALESCE(SUM(t.amount), 0) AS spent
+FROM BudgetEntity b
+LEFT JOIN TransactionEntity t ON t.categoryId = b.categoryId
+    AND t.type = 'EXPENSE'
+    AND t.date LIKE :monthPrefix || '%'
+    AND t.userId = b.userId
+WHERE b.userId = :userId
+GROUP BY b.id;
+
+insert:
+INSERT OR REPLACE INTO BudgetEntity(id, categoryId, limitAmount, period, isDirty, userId)
+VALUES (?, ?, ?, ?, ?, ?);
+
+delete:
+DELETE FROM BudgetEntity WHERE id = :id;
