@@ -1,0 +1,20 @@
+CREATE TABLE TransactionEntity (
+id TEXT NOT NULL PRIMARY KEY,
+amount REAL NOT NULL,
+type TEXT NOT NULL,
+categoryId TEXT NOT NULL,
+date TEXT NOT NULL,
+note TEXT,
+createdAt TEXT NOT NULL,
+updatedAt TEXT NOT NULL,
+isDirty INTEGER NOT NULL DEFAULT 1,
+userId TEXT NOT NULL
+);
+selectAll: SELECT * FROM TransactionEntity WHERE userId = :userId ORDER BY date DESC, createdAt DESC;
+selectByMonth: SELECT * FROM TransactionEntity WHERE userId = :userId AND date LIKE :monthPrefix || '%' ORDER BY date DESC;
+selectDirty: SELECT * FROM TransactionEntity WHERE isDirty = 1;
+insert: INSERT OR REPLACE INTO TransactionEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+markClean: UPDATE TransactionEntity SET isDirty = 0 WHERE id = :id;
+delete: DELETE FROM TransactionEntity WHERE id = :id;
+monthlySummary: SELECT type, SUM(amount) AS total FROM TransactionEntity WHERE userId = :userId AND date LIKE :monthPrefix || '%' GROUP BY type;
+categoryTotals: SELECT categoryId, SUM(amount) AS total FROM TransactionEntity WHERE userId = :userId AND type = 'EXPENSE' AND date LIKE :monthPrefix || '%' GROUP BY categoryId ORDER BY total DESC;
