@@ -191,6 +191,55 @@ fun AuthScreen(
                     )
                 }
             }
+
+            Spacer(Modifier.height(24.dp))
+
+            // ── OR Divider ──────────────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = colors.ghostBorder,
+                    thickness = 1.dp
+                )
+                Text(
+                    text = "OR",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceSecondary,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = colors.ghostBorder,
+                    thickness = 1.dp
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // ── Google Button ───────────────────────────────────
+            OutlinedButton(
+                onClick  = { viewModel.onIntent(AuthIntent.GoogleSignInClick) },
+                enabled  = !state.isLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape    = RoundedCornerShape(8.dp),
+                border   = ButtonDefaults.outlinedButtonBorder(enabled = true),
+                colors   = ButtonDefaults.outlinedButtonColors(
+                    contentColor = colors.onSurfacePrimary
+                )
+            ) {
+                Text(
+                    text = "CONTINUE WITH GOOGLE",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        letterSpacing = 1.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                )
+            }
         }
     }
 }
