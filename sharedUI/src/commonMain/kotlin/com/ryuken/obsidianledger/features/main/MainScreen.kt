@@ -14,13 +14,16 @@ import com.ryuken.obsidianledger.features.analytics.AnalyticsScreen
 import com.ryuken.obsidianledger.features.budgets.BudgetsScreen
 import com.ryuken.obsidianledger.features.dashboard.DashboardScreen
 import com.ryuken.obsidianledger.features.profile.ProfileScreen
+import com.ryuken.obsidianledger.features.splits.SplitsScreen
 import com.ryuken.obsidianledger.navigation.MainComponent
 
 @Composable
 fun MainScreen(
     component        : MainComponent,
     onAddTransaction : () -> Unit,
-    onSignedOut      : () -> Unit = {}
+    onSignedOut      : () -> Unit = {},
+    onNavigateToGroup: (String) -> Unit = {},
+    onCreateGroup    : () -> Unit = {}
 ) {
     val stack by component.stack.subscribeAsState()
     val colors = LedgerTheme.colors
@@ -44,6 +47,10 @@ fun MainScreen(
                     onAddTransaction = onAddTransaction
                 )
                 is MainComponent.Child.Analytics -> AnalyticsScreen()
+                is MainComponent.Child.Splits    -> SplitsScreen(
+                    onNavigateToGroup = onNavigateToGroup,
+                    onCreateGroup     = onCreateGroup
+                )
                 is MainComponent.Child.Budgets   -> BudgetsScreen()
                 is MainComponent.Child.Profile   -> ProfileScreen(
                     onSignedOut = onSignedOut
