@@ -91,6 +91,11 @@ fun DashboardScreen(
                 }
             }
 
+            // ── Splits Summary ───────────────────────────────────
+            item {
+                SplitsSummaryCard(activeGroups = state.activeSplitGroups, colors = colors)
+            }
+
             // ── Recent Transactions ─────────────────────────────
             item {
                 Text(
@@ -162,7 +167,7 @@ private fun HeroBalanceCard(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "₹${formatAmount(balance)}",
+            text = "${LedgerTheme.currencySymbol}${formatAmount(balance)}",
             style = AmountTextStyle(40f).copy(
                 color = colors.accentStart
             )
@@ -218,7 +223,7 @@ private fun IncomeExpenseLabel(
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "₹${formatAmount(amount)}",
+            text = "${LedgerTheme.currencySymbol}${formatAmount(amount)}",
             style = TabularStyle(18f, FontWeight.SemiBold).copy(
                 color = colors.onSurfacePrimary
             )
@@ -325,7 +330,7 @@ private fun TransactionItem(
         }
 
         Text(
-            text = "${if (transaction.type == TransactionType.EXPENSE) "-" else "+"}₹${formatAmount(transaction.amount)}",
+            text = "${if (transaction.type == TransactionType.EXPENSE) "-" else "+"}${LedgerTheme.currencySymbol}${formatAmount(transaction.amount)}",
             style = TabularStyle(16f, FontWeight.SemiBold).copy(
                 color = if (transaction.type == TransactionType.EXPENSE) colors.danger else colors.accentStart
             )
@@ -342,6 +347,54 @@ private fun formatAmount(amount: Double): String {
     return if (abs == abs.toLong().toDouble()) {
         abs.toLong().toString()
     } else {
-        String.format("%.2f", abs)
+        val rounded = kotlin.math.round(abs * 100) / 100.0
+        val str = rounded.toString()
+        val parts = str.split(".")
+        if (parts.size == 2 && parts[1].length == 1) "${parts[0]}.${parts[1]}0" else str
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Splits Summary Card
+// ═══════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun SplitsSummaryCard(
+    activeGroups: Int,
+    colors: com.ryuken.obsidianledger.core.ui.theme.LedgerColors
+) {
+    if (activeGroups == 0) return
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.surfaceLow)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(colors.surfaceContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = "👥", fontSize = 20.sp)
+        }
+        Spacer(Modifier.width(14.dp))
+        Column {
+            Text(
+                text = "Active Split Groups",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurfacePrimary,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = "You are part of $activeGroups ${if (activeGroups == 1) "group" else "groups"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceSecondary
+            )
+        }
     }
 }
