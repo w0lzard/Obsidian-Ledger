@@ -220,7 +220,7 @@ private fun BudgetCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "₹${formatAmt(budget.spent)} / ₹${formatAmt(budget.limitAmount)}",
+                    text = "${LedgerTheme.currencySymbol}${formatAmt(budget.spent)} / ${LedgerTheme.currencySymbol}${formatAmt(budget.limitAmount)}",
                     style = TabularStyle(13f).copy(color = colors.onSurfaceSecondary)
                 )
                 Text(
@@ -335,7 +335,7 @@ private fun AddBudgetDialog(
                     value = limitText,
                     onValueChange = { limitText = it },
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onSurfacePrimary),
-                    placeholder = { Text("₹ Amount", color = colors.onSurfaceSecondary) },
+                    placeholder = { Text("${LedgerTheme.currencySymbol} Amount", color = colors.onSurfaceSecondary) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     colors = TextFieldDefaults.colors(
@@ -372,6 +372,9 @@ private fun formatAmt(amount: Double): String {
     return if (amount == amount.toLong().toDouble()) {
         amount.toLong().toString()
     } else {
-        String.format("%.2f", amount)
+        val rounded = kotlin.math.round(amount * 100) / 100.0
+        val str = rounded.toString()
+        val parts = str.split(".")
+        if (parts.size == 2 && parts[1].length == 1) "${parts[0]}.${parts[1]}0" else str
     }
 }
