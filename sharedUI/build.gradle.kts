@@ -114,5 +114,4 @@ buildConfig {
 
     buildConfigField("SUPABASE_URL", localProperties.getProperty("SUPABASE_URL") ?: "")
     buildConfigField("SUPABASE_KEY", localProperties.getProperty("SUPABASE_KEY") ?: "")
-    buildConfigField("RESEND_API_KEY", localProperties.getProperty("RESEND_API_KEY") ?: "")
 }

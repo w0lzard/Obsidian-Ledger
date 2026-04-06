@@ -8,9 +8,6 @@ struct ComposeApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
-        let resend = Bundle.main.object(forInfoDictionaryKey: "RESEND_API_KEY") as? String ?? ""
-        ResendConfigKt.configure(apiKey: resend)
-
         // Koin initialisation — runs before any UI
         DIKt.doInitKoin(platformModule: IosModuleKt.iosModule)
 

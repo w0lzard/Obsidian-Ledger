@@ -83,6 +83,9 @@ val coreModule = module {
         SplitRepositoryImpl(db = get())
     }
     single {
-        com.ryuken.obsidianledger.core.network.ResendEmailService()
+        com.ryuken.obsidianledger.core.network.ResendEmailService(
+            supabaseAnonKey = SupabaseConfig.key,
+            supabaseUrl     = SupabaseConfig.url
+        )
     }
 }
