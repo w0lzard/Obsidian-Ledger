@@ -81,6 +81,11 @@ object LedgerTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalLedgerColors.current
+
+    val currencySymbol: String
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalCurrencySymbol.current
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -185,13 +190,35 @@ internal val LocalThemeIsDark = compositionLocalOf { mutableStateOf(true) }
 // Root theme composable
 // ═══════════════════════════════════════════════════════════════════════
 
+object LedgerThemeConfig {
+    val themeFlow = kotlinx.coroutines.flow.MutableStateFlow<String?>("System")
+}
+
+object LedgerCurrencyConfig {
+    val currencyFlow = kotlinx.coroutines.flow.MutableStateFlow<String>("₹")
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Root theme composable
+// ═══════════════════════════════════════════════════════════════════════
+
+internal val LocalCurrencySymbol = staticCompositionLocalOf { "₹" }
+
 @Composable
 internal fun AppTheme(
     onThemeChanged: @Composable (isDark: Boolean) -> Unit = {},
     content: @Composable () -> Unit
 ) {
     val systemIsDark = isSystemInDarkTheme()
-    val isDarkState = remember(systemIsDark) { mutableStateOf(systemIsDark) }
+    val themePref by LedgerThemeConfig.themeFlow.collectAsState()
+    
+    val actualIsDark = when (themePref) {
+        "Dark" -> true
+        "Light" -> false
+        else -> systemIsDark
+    }
+
+    val isDarkState = remember(actualIsDark) { mutableStateOf(actualIsDark) }
 
     CompositionLocalProvider(
         LocalThemeIsDark provides isDarkState
@@ -202,9 +229,12 @@ internal fun AppTheme(
         val colorScheme = if (isDark) ObsidianDarkColorScheme else ObsidianLightColorScheme
         val ledgerColors = if (isDark) DarkLedgerColors else LightLedgerColors
         val typography = LedgerTypography()
+        
+        val currencySymbol by LedgerCurrencyConfig.currencyFlow.collectAsState()
 
         CompositionLocalProvider(
-            LocalLedgerColors provides ledgerColors
+            LocalLedgerColors provides ledgerColors,
+            LocalCurrencySymbol provides currencySymbol
         ) {
             MaterialTheme(
                 colorScheme = colorScheme,
