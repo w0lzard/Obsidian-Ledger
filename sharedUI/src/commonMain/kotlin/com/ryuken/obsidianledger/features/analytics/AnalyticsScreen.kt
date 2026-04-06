@@ -84,15 +84,15 @@ fun AnalyticsScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "₹${formatAmount(state.totalOutflow)}",
-                    style = AmountTextStyle(34f).copy(color = colors.onSurfacePrimary)
+                    text = "${LedgerTheme.currencySymbol}${formatAmount(state.totalOutflow)}",
+                    style = TabularStyle(28f, FontWeight.Bold).copy(color = LedgerTheme.colors.onSurfacePrimary)
                 )
                 Spacer(Modifier.height(4.dp))
                 val delta = state.monthOverMonthDelta
                 val deltaColor = if (delta <= 0) colors.accentStart else colors.danger
                 val deltaPrefix = if (delta > 0) "+" else ""
                 Text(
-                    text = "${deltaPrefix}${String.format("%.1f", delta)}% vs last month",
+                    text = "${deltaPrefix}${(kotlin.math.round(delta * 10) / 10.0).toString()}% vs last month",
                     style = MaterialTheme.typography.bodySmall.copy(color = deltaColor)
                 )
             }
@@ -165,13 +165,13 @@ fun AnalyticsScreen(
             ) {
                 StatCard(
                     label = "SAVINGS RATE",
-                    value = "${String.format("%.1f", state.savingsRate)}%",
+                    value = "${(kotlin.math.round(state.savingsRate * 10) / 10.0).toString()}%",
                     colors = colors,
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
                     label = "AVG TRANSACTION",
-                    value = "₹${formatAmount(state.avgTransaction)}",
+                    value = "${LedgerTheme.currencySymbol}${formatAmount(state.avgTransaction)}",
                     colors = colors,
                     modifier = Modifier.weight(1f)
                 )
@@ -205,7 +205,7 @@ fun AnalyticsScreen(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = if (state.savingsRate > 20)
-                            "Great job! You're saving ${String.format("%.0f", state.savingsRate)}% of your income this month. Keep up the momentum."
+                            "Great job! You're saving ${kotlin.math.round(state.savingsRate).toLong().toString()}% of your income this month. Keep up the momentum."
                         else if (state.totalOutflow > 0)
                             "Your spending has ${if (state.monthOverMonthDelta > 0) "increased" else "decreased"} compared to last month. Consider reviewing your top expense categories."
                         else
@@ -285,8 +285,8 @@ private fun CategoryBar(
                 color = colors.onSurfacePrimary
             )
             Text(
-                text = "₹${formatAmount(amount)}",
-                style = TabularStyle(12f).copy(color = colors.onSurfaceSecondary)
+                text = "${LedgerTheme.currencySymbol}${formatAmount(amount)}",
+                style = TabularStyle(14f, FontWeight.Medium).copy(color = LedgerTheme.colors.onSurfacePrimary)
             )
         }
         Spacer(Modifier.height(4.dp))
@@ -339,6 +339,9 @@ private fun formatAmount(amount: Double): String {
     return if (abs == abs.toLong().toDouble()) {
         abs.toLong().toString()
     } else {
-        String.format("%.2f", abs)
+        val rounded = kotlin.math.round(abs * 100) / 100.0
+        val str = rounded.toString()
+        val parts = str.split(".")
+        if (parts.size == 2 && parts[1].length == 1) "${parts[0]}.${parts[1]}0" else str
     }
 }
