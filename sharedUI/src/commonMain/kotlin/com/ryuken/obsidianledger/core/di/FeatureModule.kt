@@ -2,9 +2,15 @@ package com.ryuken.obsidianledger.core.di
 
 import com.ryuken.obsidianledger.core.domain.repository.AuthRepository
 import com.ryuken.obsidianledger.core.domain.usecase.SyncUseCase
+import com.ryuken.obsidianledger.core.domain.usecase.CreateGroupUseCase
+import com.ryuken.obsidianledger.core.domain.usecase.AddSplitExpenseUseCase
+import com.ryuken.obsidianledger.core.domain.usecase.GetGroupsUseCase
+import com.ryuken.obsidianledger.core.domain.usecase.GetGroupBalancesUseCase
+import com.ryuken.obsidianledger.core.domain.usecase.RecordSettlementUseCase
 import com.ryuken.obsidianledger.features.auth.AuthViewModel
 import com.ryuken.obsidianledger.features.auth.SignInUseCase
 import com.ryuken.obsidianledger.features.auth.SignUpUseCase
+import com.ryuken.obsidianledger.features.auth.SignInWithGoogleUseCase
 import com.ryuken.obsidianledger.features.dashboard.DashboardViewModel
 import com.ryuken.obsidianledger.features.dashboard.GetMonthlySummaryUseCase
 import com.ryuken.obsidianledger.features.dashboard.GetRecentTransactionsUseCase
@@ -22,6 +28,9 @@ import com.ryuken.obsidianledger.features.budgets.DeleteBudgetUseCase
 import com.ryuken.obsidianledger.features.profile.ProfileViewModel
 import com.ryuken.obsidianledger.features.profile.SignOutUseCase
 import com.ryuken.obsidianledger.features.profile.ExportCsvUseCase
+import com.ryuken.obsidianledger.features.splits.SplitsViewModel
+import com.ryuken.obsidianledger.features.splits.GroupDetailViewModel
+import com.ryuken.obsidianledger.features.splits.AddSplitExpenseViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -30,10 +39,13 @@ val featureModule = module {
     // ── Auth ──────────────────────────────────────────────────────────
     factory { SignInUseCase(authRepo = get()) }
     factory { SignUpUseCase(authRepo = get()) }
+    factory { SignInWithGoogleUseCase(authRepo = get()) }
     viewModel {
         AuthViewModel(
             signIn = get(),
-            signUp = get()
+            signUp = get(),
+            signInWithGoogle = get(),
+            supabaseClient = get()
         )
     }
 
@@ -48,6 +60,7 @@ val featureModule = module {
             getRecentTransactions = get(),
             getBudgetPreview      = get(),
             getProfile            = get(),
+            getGroups             = get(),
             authRepo              = get()
         )
     }
@@ -62,6 +75,7 @@ val featureModule = module {
             authRepo       = get()
         )
     }
+
 
     // ── Analytics ─────────────────────────────────────────────────────
     factory { GetMonthlyTotalsUseCase(transactionRepo = get()) }
@@ -97,7 +111,42 @@ val featureModule = module {
             signOut     = get(),
             exportCsv   = get(),
             syncUseCase = get(),
-            authRepo    = get()
+            authRepo    = get(),
+            profileRepo = get(),
+            appPrefs    = get()
+        )
+    }
+
+    // ── Splits ────────────────────────────────────────────────────────
+    factory { CreateGroupUseCase(repo = get()) }
+    factory { AddSplitExpenseUseCase(repo = get()) }
+    factory { GetGroupsUseCase(repo = get()) }
+    factory { GetGroupBalancesUseCase(repo = get()) }
+    factory { RecordSettlementUseCase(repo = get()) }
+    factory { com.ryuken.obsidianledger.core.domain.usecase.SendPaymentRequestUseCase(get()) }
+
+    viewModel {
+        SplitsViewModel(
+            getGroups = get(),
+            splitRepo = get(),
+            authRepo  = get()
+        )
+    }
+    viewModel { params ->
+        GroupDetailViewModel(
+            groupId            = params.get(),
+            splitRepo          = get(),
+            recordSettlement   = get(),
+            getBalances        = get(),
+            sendPaymentRequest = get(),
+            authRepo           = get()
+        )
+    }
+    viewModel { params ->
+        AddSplitExpenseViewModel(
+            groupId    = params.get(),
+            splitRepo  = get(),
+            addExpense = get()
         )
     }
 }
