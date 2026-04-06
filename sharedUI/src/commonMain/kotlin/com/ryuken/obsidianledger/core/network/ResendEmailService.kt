@@ -26,7 +26,7 @@ class ResendEmailService(
     }
 
     private val edgeFunctionUrl: String
-        get() = "$supabaseUrl/functions/v1/send-payment-request"
+        get() = "${supabaseUrl.trimEnd('/')}/functions/v1/quick-responder"
 
     suspend fun sendPaymentRequest(
         toEmail      : String,
