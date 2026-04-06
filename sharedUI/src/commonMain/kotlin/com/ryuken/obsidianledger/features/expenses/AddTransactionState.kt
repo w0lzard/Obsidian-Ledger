@@ -13,9 +13,9 @@ data class AddTransactionState(
     val selectedCategory : Category? = null,
     val note : String = "",
     val date : LocalDate = Clock.System.todayIn(TimeZone.currentSystemDefault()),
-    val categories : List<Category> = emptyList(),
     val isLoading : Boolean = false,
-    val error : String? = null
+    val error : String? = null,
+    val categories: List<Category> = emptyList()
 ){
     val amountDouble : Double get() = amount.toDoubleOrNull() ?: 0.0
     val canSave : Boolean get() = amountDouble > 0 && selectedCategory != null
