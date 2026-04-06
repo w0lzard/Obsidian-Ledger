@@ -27,6 +27,7 @@ import com.ryuken.obsidianledger.core.ui.theme.AmountTextStyle
 import com.ryuken.obsidianledger.core.ui.theme.LedgerTheme
 import org.koin.compose.viewmodel.koinViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTransactionScreen(
     onBack: () -> Unit,
@@ -83,10 +84,9 @@ fun AddTransactionScreen(
         ) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    text = "₹",
-                    style = AmountTextStyle(28f).copy(
-                        color = colors.accentStart
-                    ),
+                    text = LedgerTheme.currencySymbol,
+                    style = MaterialTheme.typography.displayMedium,
+                    color = colors.accentStart,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
                 Spacer(Modifier.width(4.dp))
@@ -196,9 +196,9 @@ fun AddTransactionScreen(
             )
         }
 
-        Spacer(Modifier.weight(1f))
 
-        // ── Numpad ──────────────────────────────────────────────
+
+        // ── Numpad ──────────────────────────────────────────────────
         NumpadGrid(
             onKey = { viewModel.onIntent(AddTransactionIntent.NumpadInput(it)) },
             onDelete = { viewModel.onIntent(AddTransactionIntent.NumpadDelete) },
@@ -239,6 +239,8 @@ fun AddTransactionScreen(
                 )
             }
         }
+
+
     }
 }
 
