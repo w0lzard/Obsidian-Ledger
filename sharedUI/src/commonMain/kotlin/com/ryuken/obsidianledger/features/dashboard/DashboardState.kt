@@ -10,6 +10,7 @@ data class DashboardState(
     val monthlyBudget      : Double            = 0.0,
     val recentTransactions : List<Transaction>  = emptyList(),
     val budgets            : List<Budget>       = emptyList(),
+    val activeSplitGroups  : Int               = 0,
     val isLoading          : Boolean           = true,
     val error              : String?           = null
 ) {
