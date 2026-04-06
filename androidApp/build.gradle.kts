@@ -27,6 +27,16 @@ android {
             "SUPABASE_KEY",
             "\"${props.getProperty("SUPABASE_KEY")}\""
         )
+        buildConfigField(
+            "String",
+            "GOOGLE_ANDROID_CLIENT_ID",
+            "\"${props.getProperty("GOOGLE_ANDROID_CLIENT_ID")}\""
+        )
+        buildConfigField(
+            "String",
+            "RESEND_API_KEY",
+            "\"${props.getProperty("RESEND_API_KEY") ?: ""}\""
+        )
     }
     buildFeatures {
         buildConfig = true
