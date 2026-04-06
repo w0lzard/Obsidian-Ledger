@@ -30,6 +30,7 @@ class MainComponent(
     ): Child = when (config) {
         Config.Dashboard -> Child.Dashboard
         Config.Analytics -> Child.Analytics
+        Config.Splits    -> Child.Splits
         Config.Budgets   -> Child.Budgets
         Config.Profile   -> Child.Profile
     }
@@ -38,6 +39,7 @@ class MainComponent(
     sealed interface Config {
         @Serializable data object Dashboard : Config
         @Serializable data object Analytics : Config
+        @Serializable data object Splits    : Config
         @Serializable data object Budgets   : Config
         @Serializable data object Profile   : Config
     }
@@ -45,6 +47,7 @@ class MainComponent(
     sealed interface Child {
         data object Dashboard : Child
         data object Analytics : Child
+        data object Splits    : Child
         data object Budgets   : Child
         data object Profile   : Child
     }
