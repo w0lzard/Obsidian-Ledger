@@ -1,9 +1,14 @@
 package com.ryuken.obsidianledger
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import com.arkivanov.decompose.extensions.compose.stack.Children
-import com.arkivanov.decompose.extensions.compose.stack.animation.slide
+import com.arkivanov.decompose.extensions.compose.stack.animation.Direction
+import com.arkivanov.decompose.extensions.compose.stack.animation.fade
+import com.arkivanov.decompose.extensions.compose.stack.animation.plus
+import com.arkivanov.decompose.extensions.compose.stack.animation.scale
 import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import com.ryuken.obsidianledger.core.ui.theme.AppTheme
@@ -54,7 +59,16 @@ private fun RootNavHost(root: RootComponent) {
 
     Children(
         stack     = stack,
-        animation = stackAnimation(slide())
+        animation = stackAnimation { _, _, direction ->
+            if (direction == Direction.ENTER_FRONT) {
+                // Push — fade in with a slight scale-up bounce
+                fade(animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing)) +
+                scale(animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing))
+            } else {
+                // Pop — just a clean fade
+                fade(animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing))
+            }
+        }
     ) { child ->
         when (val instance = child.instance) {
             is Child.Auth           -> AuthScreen(

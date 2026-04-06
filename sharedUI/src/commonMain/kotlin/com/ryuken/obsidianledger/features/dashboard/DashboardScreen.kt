@@ -26,6 +26,8 @@ import com.ryuken.obsidianledger.core.domain.model.TransactionType
 import com.ryuken.obsidianledger.core.ui.theme.AmountTextStyle
 import com.ryuken.obsidianledger.core.ui.theme.LedgerTheme
 import com.ryuken.obsidianledger.core.ui.theme.TabularStyle
+import com.ryuken.obsidianledger.core.ui.components.AnimatedListItem
+import com.ryuken.obsidianledger.core.ui.components.animateDoubleAsState
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -123,7 +125,10 @@ fun DashboardScreen(
             }
 
             items(state.recentTransactions, key = { it.id }) { transaction ->
-                TransactionItem(transaction = transaction, colors = colors)
+                val index = state.recentTransactions.indexOf(transaction)
+                AnimatedListItem(index = index) {
+                    TransactionItem(transaction = transaction, colors = colors)
+                }
             }
         }
 
@@ -166,8 +171,10 @@ private fun HeroBalanceCard(
             color = colors.onSurfaceSecondary
         )
         Spacer(Modifier.height(8.dp))
+        val animatedBalance = animateDoubleAsState(targetValue = balance)
+
         Text(
-            text = "${LedgerTheme.currencySymbol}${formatAmount(balance)}",
+            text = "${LedgerTheme.currencySymbol}${formatAmount(animatedBalance)}",
             style = AmountTextStyle(40f).copy(
                 color = colors.accentStart
             )

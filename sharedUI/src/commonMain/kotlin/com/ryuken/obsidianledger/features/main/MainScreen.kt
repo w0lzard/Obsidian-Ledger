@@ -5,6 +5,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import com.arkivanov.decompose.extensions.compose.stack.Children
 import com.arkivanov.decompose.extensions.compose.stack.animation.fade
 import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
@@ -39,7 +41,9 @@ fun MainScreen(
     ) { padding ->
         Children(
             stack     = stack,
-            animation = stackAnimation(fade()),
+            animation = stackAnimation(
+                fade(animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing))
+            ),
             modifier  = Modifier.padding(padding)
         ) { child ->
             when (child.instance) {

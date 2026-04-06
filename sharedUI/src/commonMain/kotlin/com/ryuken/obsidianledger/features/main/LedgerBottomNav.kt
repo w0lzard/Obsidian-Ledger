@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.ryuken.obsidianledger.core.ui.theme.LedgerTheme
 import com.ryuken.obsidianledger.navigation.MainComponent
@@ -72,9 +73,17 @@ fun LedgerBottomNav(
             val isSelected = currentConfig == item.config
 
             val scale by animateFloatAsState(
-                targetValue = if (isSelected) 1.05f else 1f,
-                animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                targetValue = if (isSelected) 1.1f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness    = Spring.StiffnessMedium
+                ),
                 label = "scale"
+            )
+            val labelAlpha by animateFloatAsState(
+                targetValue   = if (isSelected) 1f else 0.5f,
+                animationSpec = androidx.compose.animation.core.tween(200),
+                label         = "navLabelAlpha"
             )
             val iconColor by animateColorAsState(
                 targetValue = if (isSelected) colors.accentStart else colors.onSurfaceSecondary,
@@ -103,7 +112,8 @@ fun LedgerBottomNav(
                     text = item.label,
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = iconColor
-                    )
+                    ),
+                    modifier = Modifier.graphicsLayer { alpha = labelAlpha }
                 )
             }
         }
