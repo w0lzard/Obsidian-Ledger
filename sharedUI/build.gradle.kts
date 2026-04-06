@@ -16,6 +16,7 @@ sqldelight {
         create("LedgerDatabase") {
             packageName.set("com.ryuken.obsidianledger.core.database")
             srcDirs.setFrom("src/commonMain/database")
+            verifyMigrations.set(true)
         }
     }
 }
@@ -50,11 +51,13 @@ kotlin {
 
             // Supabase
             implementation(libs.supabase.postgrest)
-            implementation(libs.supabase.auth)
+            api(libs.supabase.auth)
             implementation(libs.supabase.realtime)
 
             // Ktor (Supabase HTTP engine)
             implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
 
             // DI
             implementation(libs.koin.core)
@@ -67,6 +70,10 @@ kotlin {
             implementation(libs.napier)
             implementation(libs.uuid)
             implementation(libs.serialization.json)
+            
+            // Settings
+            implementation(libs.multiplatform.settings)
+            implementation(libs.multiplatform.settings.no.arg)
 
             // Decompose
             implementation(libs.decompose.core)
@@ -107,4 +114,5 @@ buildConfig {
 
     buildConfigField("SUPABASE_URL", localProperties.getProperty("SUPABASE_URL") ?: "")
     buildConfigField("SUPABASE_KEY", localProperties.getProperty("SUPABASE_KEY") ?: "")
+    buildConfigField("RESEND_API_KEY", localProperties.getProperty("RESEND_API_KEY") ?: "")
 }
