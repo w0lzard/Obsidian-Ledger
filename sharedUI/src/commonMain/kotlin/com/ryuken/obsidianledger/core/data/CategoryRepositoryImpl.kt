@@ -47,6 +47,18 @@ class CategoryRepositoryImpl(
         }
     }
 
+    override suspend fun getDefaultCategory(id: String): Category =
+        withContext(Dispatchers.IO) {
+            queries.selectById(id).executeAsOneOrNull()?.toDomain()
+                ?: Category(
+                    id       = "cat_food",
+                    name     = "General",
+                    emoji    = "💰",
+                    colorHex = "#00C896",
+                    isCustom = false
+                )
+        }
+
     // ── Seed defaults on first launch ─────────────────────────────────
     suspend fun seedDefaultsIfEmpty(userId: String) =
         withContext(Dispatchers.IO) {

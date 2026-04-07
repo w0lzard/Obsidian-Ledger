@@ -28,9 +28,13 @@ class DashboardViewModel(
 
     init {
         viewModelScope.launch {
+            // Prefer the profile display name; fall back to auth user metadata if profile fetch fails.
             runCatching { getProfile(userId) }
-                .onSuccess { _userName.update { _ -> it.displayName } }
-                .onFailure { _userName.update { _ -> "User" } }
+                .onSuccess { _userName.update { _ -> it.displayName.ifBlank { "You" } } }
+                .onFailure {
+                    val fallback = authRepo.currentUserId()?.let { _ -> "You" } ?: "You"
+                    _userName.update { _ -> fallback }
+                }
         }
     }
 
@@ -81,12 +85,5 @@ class DashboardViewModel(
 
 // ─── Dynamic greeting helper ──────────────────────────────────────────
 fun greeting(): String {
-    val hour = Clock.System.now()
-        .toLocalDateTime(TimeZone.currentSystemDefault())
-        .hour
-    return when {
-        hour < 12 -> "Good morning"
-        hour < 17 -> "Good afternoon"
-        else      -> "Good evening"
-    }
+    return "Greetings"
 }

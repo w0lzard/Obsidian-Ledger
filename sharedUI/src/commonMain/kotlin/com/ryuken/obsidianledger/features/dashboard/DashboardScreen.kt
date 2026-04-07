@@ -1,6 +1,7 @@
 package com.ryuken.obsidianledger.features.dashboard
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -33,6 +34,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun DashboardScreen(
     onAddTransaction: () -> Unit,
+    onSplitsClick: () -> Unit,
     viewModel: DashboardViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -95,7 +97,11 @@ fun DashboardScreen(
 
             // ── Splits Summary ───────────────────────────────────
             item {
-                SplitsSummaryCard(activeGroups = state.activeSplitGroups, colors = colors)
+                SplitsSummaryCard(
+                    activeGroups = state.activeSplitGroups,
+                    colors = colors,
+                    onClick = onSplitsClick
+                )
             }
 
             // ── Recent Transactions ─────────────────────────────
@@ -158,6 +164,7 @@ private fun HeroBalanceCard(
     expense: Double,
     colors: com.ryuken.obsidianledger.core.ui.theme.LedgerColors
 ) {
+    val balanceColor = if (balance < 0) colors.danger else colors.accentStart
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -174,9 +181,9 @@ private fun HeroBalanceCard(
         val animatedBalance = animateDoubleAsState(targetValue = balance)
 
         Text(
-            text = "${LedgerTheme.currencySymbol}${formatAmount(animatedBalance)}",
+            text = "${if (animatedBalance < 0) "-" else ""}${LedgerTheme.currencySymbol}${formatAmount(animatedBalance)}",
             style = AmountTextStyle(40f).copy(
-                color = colors.accentStart
+                color = balanceColor
             )
         )
         Spacer(Modifier.height(4.dp))
@@ -368,7 +375,8 @@ private fun formatAmount(amount: Double): String {
 @Composable
 private fun SplitsSummaryCard(
     activeGroups: Int,
-    colors: com.ryuken.obsidianledger.core.ui.theme.LedgerColors
+    colors: com.ryuken.obsidianledger.core.ui.theme.LedgerColors,
+    onClick: () -> Unit
 ) {
     if (activeGroups == 0) return
 
@@ -377,6 +385,7 @@ private fun SplitsSummaryCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(colors.surfaceLow)
+            .clickable { onClick() }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

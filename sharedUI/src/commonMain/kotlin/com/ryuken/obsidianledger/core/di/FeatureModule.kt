@@ -112,6 +112,8 @@ val featureModule = module {
             exportCsv   = get(),
             syncUseCase = get(),
             authRepo    = get(),
+            transactionRepo = get(),
+            budgetRepo      = get(),
             profileRepo = get(),
             appPrefs    = get()
         )
@@ -119,11 +121,25 @@ val featureModule = module {
 
     // ── Splits ────────────────────────────────────────────────────────
     factory { CreateGroupUseCase(repo = get()) }
-    factory { AddSplitExpenseUseCase(repo = get()) }
+    factory {
+        AddSplitExpenseUseCase(
+            repo           = get(),
+            addTransaction = get(),
+            categoryRepo   = get()
+        )
+    }
     factory { GetGroupsUseCase(repo = get()) }
     factory { GetGroupBalancesUseCase(repo = get()) }
-    factory { RecordSettlementUseCase(repo = get()) }
+    factory {
+        RecordSettlementUseCase(
+            repo           = get(),
+            addTransaction = get(),
+            categoryRepo   = get()
+        )
+    }
     factory { com.ryuken.obsidianledger.core.domain.usecase.SendPaymentRequestUseCase(get()) }
+    factory { com.ryuken.obsidianledger.core.domain.usecase.EditMemberUseCase(repo = get()) }
+    factory { com.ryuken.obsidianledger.core.domain.usecase.RemoveMemberUseCase(repo = get()) }
 
     viewModel {
         SplitsViewModel(
@@ -139,7 +155,9 @@ val featureModule = module {
             recordSettlement   = get(),
             getBalances        = get(),
             sendPaymentRequest = get(),
-            authRepo           = get()
+            authRepo           = get(),
+            editMemberUseCase  = get(),
+            removeMemberUseCase = get()
         )
     }
     viewModel { params ->

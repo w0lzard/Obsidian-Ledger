@@ -3,6 +3,8 @@ package com.ryuken.obsidianledger.features.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ryuken.obsidianledger.core.domain.repository.AuthRepository
+import com.ryuken.obsidianledger.core.domain.repository.BudgetRepository
+import com.ryuken.obsidianledger.core.domain.repository.TransactionRepository
 import com.ryuken.obsidianledger.core.domain.usecase.SyncUseCase
 import com.ryuken.obsidianledger.features.dashboard.GetProfileUseCase
 import io.github.aakira.napier.Napier
@@ -19,8 +21,10 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.todayIn
 
 import com.ryuken.obsidianledger.core.preferences.AppPreferences
+import kotlin.time.Clock
 
 class ProfileViewModel(
     private val getProfile  : GetProfileUseCase,
@@ -28,6 +32,8 @@ class ProfileViewModel(
     private val exportCsv   : ExportCsvUseCase,
     private val syncUseCase : SyncUseCase,
     private val authRepo    : AuthRepository,
+    private val transactionRepo : TransactionRepository,
+    private val budgetRepo      : BudgetRepository,
     private val profileRepo : com.ryuken.obsidianledger.core.domain.repository.ProfileRepository,
     private val appPrefs    : AppPreferences
 ) : ViewModel() {
@@ -66,7 +72,13 @@ class ProfileViewModel(
                     if (_state.value.isLoading || _state.value.error != null) {
                         loadProfile(userId)
                     }
+                    observeStats(userId)
                 }
+        }
+
+        // If we already have a userId, also start stats immediately
+        if (immediateUserId != null) {
+            observeStats(immediateUserId)
         }
 
         // Show not signed in only after waiting for session restoration
@@ -154,13 +166,44 @@ class ProfileViewModel(
                 }
             } catch (e: Exception) {
                 Napier.e("Profile load failed: ${e.message}", e)
+                val message = when {
+                    e.message?.contains("request timeout", ignoreCase = true) == true ||
+                        e.message?.contains("request_timeout", ignoreCase = true) == true ||
+                        e.message?.contains("timeout", ignoreCase = true) == true ->
+                        "Request timeout has expired. Please check your internet and retry."
+                    else -> e.message ?: "Failed to load profile"
+                }
                 _state.update {
                     it.copy(
                         isLoading = false,
-                        error     = "${e.message} (ID: $userId)"
+                        error     = "$message (ID: $userId)"
                     )
                 }
             }
+        }
+    }
+
+    private var statsJobStartedFor: String? = null
+    private fun observeStats(userId: String) {
+        if (statsJobStartedFor == userId) return
+        statsJobStartedFor = userId
+
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        val year = today.year
+        val month = today.monthNumber
+
+        viewModelScope.launch {
+            transactionRepo.observeByMonth(userId = userId, year = year, month = month)
+                .collect { txs ->
+                    _state.update { it.copy(transactionCount = txs.size) }
+                }
+        }
+
+        viewModelScope.launch {
+            budgetRepo.observeBudgetsWithSpending(userId = userId, year = year, month = month)
+                .collect { budgets ->
+                    _state.update { it.copy(activeBudgets = budgets.size) }
+                }
         }
     }
 

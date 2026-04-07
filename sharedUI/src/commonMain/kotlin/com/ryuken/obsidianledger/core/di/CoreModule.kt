@@ -26,6 +26,7 @@ import com.ryuken.obsidianledger.core.network.SupabaseConfig
 
 import com.russhwolf.settings.Settings
 import io.github.jan.supabase.auth.SettingsSessionManager
+import kotlin.time.Duration.Companion.seconds
 
 
 val coreModule = module {
@@ -44,6 +45,8 @@ val coreModule = module {
             supabaseUrl = SupabaseConfig.url,
             supabaseKey = SupabaseConfig.key
         ) {
+            // Default is 10s; this is more resilient on mobile networks.
+            requestTimeout = 30.seconds
             install(Auth) {
                 autoSaveToStorage  = true
                 alwaysAutoRefresh  = true

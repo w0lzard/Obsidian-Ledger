@@ -48,7 +48,8 @@ fun MainScreen(
         ) { child ->
             when (child.instance) {
                 is MainComponent.Child.Dashboard -> DashboardScreen(
-                    onAddTransaction = onAddTransaction
+                    onAddTransaction = onAddTransaction,
+                    onSplitsClick    = { component.navigateTo(MainComponent.Config.Splits) }
                 )
                 is MainComponent.Child.Analytics -> AnalyticsScreen()
                 is MainComponent.Child.Splits    -> SplitsScreen(
