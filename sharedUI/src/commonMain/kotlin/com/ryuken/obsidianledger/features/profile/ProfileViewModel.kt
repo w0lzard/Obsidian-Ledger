@@ -3,16 +3,15 @@ package com.ryuken.obsidianledger.features.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ryuken.obsidianledger.core.domain.repository.AuthRepository
+import com.ryuken.obsidianledger.core.domain.repository.AuthSessionState
 import com.ryuken.obsidianledger.core.domain.repository.BudgetRepository
 import com.ryuken.obsidianledger.core.domain.repository.TransactionRepository
 import com.ryuken.obsidianledger.core.domain.usecase.SyncUseCase
 import com.ryuken.obsidianledger.features.dashboard.GetProfileUseCase
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.take
@@ -56,43 +55,32 @@ class ProfileViewModel(
             )
         }
 
-        // Try loading immediately if session is already available
-        val immediateUserId = authRepo.currentUserId()
-        if (immediateUserId != null) {
-            Napier.d("ProfileViewModel: immediate userId available — loading profile")
-            loadProfile(immediateUserId)
-        }
-
-        // Also observe session changes to handle delayed restoration
+        // sessionStatus is a hot StateFlow, so this collects the current auth state
+        // immediately — Initializing has its own branch, so a cold-start session
+        // restore no longer reads as NotAuthenticated and flashes the login screen.
         viewModelScope.launch {
-            authRepo.observeUserId()
-                .filterNotNull()
-                .distinctUntilChanged()
-                .collect { userId ->
-                    Napier.d("ProfileViewModel: observeUserId emitted $userId")
-                    // Only reload if not already loaded successfully
-                    if (_state.value.isLoading || _state.value.error != null) {
-                        loadProfile(userId)
+            authRepo.observeAuthState().collect { authState ->
+                when (authState) {
+                    is AuthSessionState.Initializing -> {
+                        Napier.d("ProfileViewModel: session initializing")
+                        _state.update { it.copy(isLoading = true) }
                     }
-                    observeStats(userId)
+                    is AuthSessionState.Authenticated -> {
+                        Napier.d("ProfileViewModel: authenticated — userId = ${authState.userId}")
+                        // Only reload if not already loaded successfully
+                        if (_state.value.isLoading || _state.value.error != null) {
+                            loadProfile(authState.userId)
+                        }
+                        observeStats(authState.userId)
+                    }
+                    is AuthSessionState.NotAuthenticated -> {
+                        Napier.d("ProfileViewModel: not authenticated")
+                        _state.update { it.copy(
+                            isLoading = false,
+                            error     = "Not signed in"
+                        )}
+                    }
                 }
-        }
-
-        // If we already have a userId, also start stats immediately
-        if (immediateUserId != null) {
-            observeStats(immediateUserId)
-        }
-
-        // Show not signed in only after waiting for session restoration
-        viewModelScope.launch {
-            // Wait 5 seconds for session to restore before giving up
-            delay(5000L)
-            if (_state.value.isLoading) {
-                Napier.w("ProfileViewModel: timed out waiting for userId")
-                _state.update { it.copy(
-                    isLoading = false,
-                    error     = "Not signed in"
-                )}
             }
         }
     }

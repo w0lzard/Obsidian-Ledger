@@ -1,6 +1,7 @@
 package com.ryuken.obsidianledger.core.data
 
 import com.ryuken.obsidianledger.core.domain.repository.AuthRepository
+import com.ryuken.obsidianledger.core.domain.repository.AuthSessionState
 import io.github.aakira.napier.Napier
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
@@ -141,6 +142,31 @@ class AuthRepositoryImpl(
                     else -> {
                         Napier.e("AuthRepository: other session status: $status")
                         null
+                    }
+                }
+            }
+            .distinctUntilChanged()
+
+    override fun observeAuthState(): Flow<AuthSessionState> =
+        supabaseClient.auth.sessionStatus
+            .map { status ->
+                when (status) {
+                    is SessionStatus.Authenticated -> {
+                        val id = status.session.user?.id ?: extractUserIdFromJwt(status.session.accessToken)
+                        Napier.d("AuthRepository: session authenticated, userId = $id")
+                        id?.let { AuthSessionState.Authenticated(it) } ?: AuthSessionState.NotAuthenticated
+                    }
+                    is SessionStatus.Initializing -> {
+                        Napier.d("AuthRepository: initializing session (loading from storage)...")
+                        AuthSessionState.Initializing
+                    }
+                    is SessionStatus.NotAuthenticated -> {
+                        Napier.d("AuthRepository: not authenticated")
+                        AuthSessionState.NotAuthenticated
+                    }
+                    else -> {
+                        Napier.e("AuthRepository: other session status: $status")
+                        AuthSessionState.NotAuthenticated
                     }
                 }
             }
