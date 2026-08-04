@@ -9,13 +9,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CallSplit
+import androidx.compose.material.icons.automirrored.outlined.CallSplit
 import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.CallSplit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material.icons.outlined.Analytics
-import androidx.compose.material.icons.outlined.CallSplit
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Wallet
@@ -48,7 +48,7 @@ private data class NavItem(
 private val navItems = listOf(
     NavItem(MainComponent.Config.Dashboard, "Home",      Icons.Filled.Home,      Icons.Outlined.Home),
     NavItem(MainComponent.Config.Analytics, "Analytics", Icons.Filled.Analytics,  Icons.Outlined.Analytics),
-    NavItem(MainComponent.Config.Splits,    "Splits",    Icons.Filled.CallSplit,  Icons.Outlined.CallSplit),
+    NavItem(MainComponent.Config.Splits,    "Splits",    Icons.AutoMirrored.Filled.CallSplit, Icons.AutoMirrored.Outlined.CallSplit),
     NavItem(MainComponent.Config.Budgets,   "Budgets",   Icons.Filled.Wallet,    Icons.Outlined.Wallet),
     NavItem(MainComponent.Config.Profile,   "Profile",   Icons.Filled.Person,    Icons.Outlined.Person),
 )
