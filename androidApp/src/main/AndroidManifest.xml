@@ -7,7 +7,8 @@
         android:name=".LedgerApplication"
         android:icon="@mipmap/ic_launcher"
         android:label="Obsidian Ledger"
-        android:theme="@style/Theme.ObsidianLedger">
+        android:theme="@style/Theme.ObsidianLedger"
+        android:allowBackup="false">
 
         <activity
             android:name=".AppActivity"
