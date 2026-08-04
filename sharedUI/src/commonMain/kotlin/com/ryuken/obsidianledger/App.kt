@@ -2,8 +2,17 @@ package com.ryuken.obsidianledger
 
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import com.arkivanov.decompose.extensions.compose.stack.Children
 import com.arkivanov.decompose.extensions.compose.stack.animation.Direction
 import com.arkivanov.decompose.extensions.compose.stack.animation.fade
@@ -11,7 +20,10 @@ import com.arkivanov.decompose.extensions.compose.stack.animation.plus
 import com.arkivanov.decompose.extensions.compose.stack.animation.scale
 import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
+import com.ryuken.obsidianledger.core.domain.repository.AuthRepository
+import com.ryuken.obsidianledger.core.domain.repository.AuthSessionState
 import com.ryuken.obsidianledger.core.ui.theme.AppTheme
+import com.ryuken.obsidianledger.core.ui.theme.LedgerTheme
 import com.ryuken.obsidianledger.features.auth.AuthScreen
 import com.ryuken.obsidianledger.features.expenses.AddTransactionScreen
 import com.ryuken.obsidianledger.features.main.MainScreen
@@ -25,7 +37,7 @@ import com.ryuken.obsidianledger.navigation.RootComponent.Child
 import com.ryuken.obsidianledger.core.preferences.AppPreferences
 import com.ryuken.obsidianledger.core.ui.theme.LedgerThemeConfig
 import com.ryuken.obsidianledger.core.ui.theme.LedgerCurrencyConfig
-import org.koin.compose.KoinContext
+import kotlinx.coroutines.flow.first
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.runtime.LaunchedEffect
@@ -36,23 +48,50 @@ fun App(
     root: RootComponent,
     onThemeChanged: @Composable (isDark: Boolean) -> Unit = {}
 ) {
-    KoinContext {
-        val appPrefs = koinInject<AppPreferences>()
-        
-        LaunchedEffect(Unit) {
-            LedgerThemeConfig.themeFlow.value = appPrefs.getString(AppPreferences.KEY_THEME, "System")
-            
-            val cur = appPrefs.getString(AppPreferences.KEY_CURRENCY, "INR (₹)")
-            val symbol = cur.substringAfter("(").removeSuffix(")")
-            LedgerCurrencyConfig.currencyFlow.value = if (symbol.isNotEmpty() && symbol != cur) symbol else "₹"
-        }
+    val appPrefs = koinInject<AppPreferences>()
+    val authRepo = koinInject<AuthRepository>()
 
-        AppTheme(onThemeChanged = onThemeChanged) {
+    // RootComponent's initial Auth-vs-Main choice is a synchronous best guess made
+    // before the session finishes loading from encrypted storage — on cold start it's
+    // wrong just often enough to flash the login screen. Block first render behind this
+    // overlay until the real auth state resolves, then route once and reveal.
+    var isResolvingAuth by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        LedgerThemeConfig.themeFlow.value = appPrefs.getString(AppPreferences.KEY_THEME, "System")
+
+        val cur = appPrefs.getString(AppPreferences.KEY_CURRENCY, "INR (₹)")
+        val symbol = cur.substringAfter("(").removeSuffix(")")
+        LedgerCurrencyConfig.currencyFlow.value = if (symbol.isNotEmpty() && symbol != cur) symbol else "₹"
+    }
+
+    LaunchedEffect(Unit) {
+        when (authRepo.observeAuthState().first { it !is AuthSessionState.Initializing }) {
+            is AuthSessionState.Authenticated    -> root.replaceWithMain()
+            is AuthSessionState.NotAuthenticated -> root.replaceWithAuth()
+            is AuthSessionState.Initializing     -> Unit // unreachable, filtered above
+        }
+        isResolvingAuth = false
+    }
+
+    AppTheme(onThemeChanged = onThemeChanged) {
+        Box(modifier = Modifier.fillMaxSize()) {
             RootNavHost(root = root)
+            if (isResolvingAuth) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(LedgerTheme.colors.surfaceBase),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
         }
     }
 }
 
+@OptIn(com.arkivanov.decompose.FaultyDecomposeApi::class)
 @Composable
 private fun RootNavHost(root: RootComponent) {
     val stack by root.stack.subscribeAsState()
