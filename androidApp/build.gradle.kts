@@ -50,4 +50,5 @@ dependencies {
     implementation(libs.decompose.core)
     implementation(libs.koin.android)
     implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.security.crypto)
 }

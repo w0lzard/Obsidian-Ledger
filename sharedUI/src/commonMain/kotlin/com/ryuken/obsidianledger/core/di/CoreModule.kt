@@ -38,8 +38,8 @@ val coreModule = module {
     single { get<LedgerDatabase>().categoryEntityQueries }
 
     // ── Supabase client ───────────────────────────────────────────────
-    single<Settings> { Settings() }
-    
+    // Settings (session token storage) is bound per-platform — see androidModule/iosModule —
+    // so each platform can back it with encrypted storage instead of the multiplatform-settings default.
     single {
         createSupabaseClient(
             supabaseUrl = SupabaseConfig.url,
