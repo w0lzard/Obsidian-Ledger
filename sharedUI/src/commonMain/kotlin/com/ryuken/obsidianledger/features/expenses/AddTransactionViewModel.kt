@@ -5,11 +5,17 @@ import androidx.lifecycle.viewModelScope
 import com.benasher44.uuid.uuid4
 import com.ryuken.obsidianledger.core.domain.model.Transaction
 import com.ryuken.obsidianledger.core.domain.repository.AuthRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
@@ -20,17 +26,22 @@ class AddTransactionViewModel(
     private val authRepo: AuthRepository
 ) : ViewModel() {
 
-    private val userId = authRepo.currentUserId() ?: ""
+    // Reactive so a ViewModel created before session restore finishes doesn't freeze
+    // on a null/empty userId for its whole lifetime.
+    private val userId: StateFlow<String?> = authRepo.observeUserId()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, authRepo.currentUserId())
 
     private val _state = MutableStateFlow(AddTransactionState())
     val state = _state.asStateFlow()
 
-    private val _effect = Channel<AddTransactionEffect>()
+    // Buffered so an effect sent before the UI collector attaches isn't dropped
+    // by the default rendezvous Channel.
+    private val _effect = Channel<AddTransactionEffect>(Channel.BUFFERED)
     val effect = _effect.receiveAsFlow()
 
     init {
         viewModelScope.launch {
-            getCategories(userId).collectLatest { categories ->
+            userId.filterNotNull().flatMapLatest { getCategories(it) }.collectLatest { categories ->
                 _state.update { it.copy(categories = categories) }
             }
         }
@@ -61,7 +72,8 @@ class AddTransactionViewModel(
 
     private fun save() {
         val currentState = _state.value
-        if (!currentState.canSave) return
+        if (!currentState.canSave || currentState.isLoading) return
+        val uid = userId.value ?: return
 
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
@@ -77,10 +89,12 @@ class AddTransactionViewModel(
                     createdAt = now,
                     updatedAt = now,
                     isDirty = true,
-                    userId = userId
+                    userId = uid
                 )
                 addTransaction(transaction)
                 _effect.send(AddTransactionEffect.SaveSuccess)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message) }
                 _effect.send(AddTransactionEffect.Error(e.message ?: "Unknown error"))

@@ -8,6 +8,7 @@ import com.ryuken.obsidianledger.core.domain.model.BudgetPeriod
 import com.ryuken.obsidianledger.core.domain.model.Category
 import com.ryuken.obsidianledger.core.domain.repository.AuthRepository
 import com.ryuken.obsidianledger.features.expenses.GetCategoriesUseCase
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -24,24 +25,36 @@ class BudgetsViewModel(
 ) : ViewModel() {
 
     private val today  = Clock.System.todayIn(TimeZone.currentSystemDefault())
-    private val userId = authRepo.currentUserId() ?: ""
+
+    // Reactive so a ViewModel created before session restore finishes doesn't freeze
+    // on a null/empty userId for its whole lifetime.
+    private val userId: StateFlow<String?> = authRepo.observeUserId()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, authRepo.currentUserId())
 
     private val _showDialog = MutableStateFlow(false)
 
-    private val _effect = Channel<BudgetsEffect>()
+    // Buffered so an effect sent before the UI collector attaches (e.g. right after
+    // a config change) isn't dropped by the default rendezvous Channel.
+    private val _effect = Channel<BudgetsEffect>(Channel.BUFFERED)
     val effect = _effect.receiveAsFlow()
 
-    val state: StateFlow<BudgetsState> = combine(
-        getBudgets(userId, today.year, today.monthNumber),
-        getCategories(userId),
-        _showDialog
-    ) { budgets, categories, showDialog ->
-        BudgetsState(
-            budgets       = budgets,
-            categories    = categories,
-            isLoading     = false,
-            showAddDialog = showDialog
-        )
+    val state: StateFlow<BudgetsState> = userId.flatMapLatest { uid ->
+        if (uid == null) {
+            flowOf(BudgetsState(isLoading = true))
+        } else {
+            combine(
+                getBudgets(uid, today.year, today.month.ordinal + 1),
+                getCategories(uid),
+                _showDialog
+            ) { budgets, categories, showDialog ->
+                BudgetsState(
+                    budgets       = budgets,
+                    categories    = categories,
+                    isLoading     = false,
+                    showAddDialog = showDialog
+                )
+            }
+        }
     }.stateIn(
         scope        = viewModelScope,
         started      = SharingStarted.WhileSubscribed(5_000),
@@ -59,6 +72,7 @@ class BudgetsViewModel(
     }
 
     private fun addNewBudget(category: Category, limit: Double) {
+        val uid = userId.value ?: return
         viewModelScope.launch {
             try {
                 addBudget(
@@ -68,12 +82,14 @@ class BudgetsViewModel(
                         limitAmount = limit,
                         spent       = 0.0,
                         period      = BudgetPeriod.MONTHLY,
-                        userId      = userId,
+                        userId      = uid,
                         isDirty     = true
                     )
                 )
                 _showDialog.update { false }
                 _effect.send(BudgetsEffect.BudgetAdded)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _effect.send(BudgetsEffect.Error(e.message ?: "Failed to add budget"))
             }
@@ -85,6 +101,8 @@ class BudgetsViewModel(
             try {
                 deleteBudget(id)
                 _effect.send(BudgetsEffect.BudgetDeleted)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _effect.send(BudgetsEffect.Error(e.message ?: "Failed to delete budget"))
             }
