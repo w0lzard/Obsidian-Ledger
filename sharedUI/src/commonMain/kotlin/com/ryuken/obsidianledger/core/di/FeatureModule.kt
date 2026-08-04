@@ -115,7 +115,8 @@ val featureModule = module {
             transactionRepo = get(),
             budgetRepo      = get(),
             profileRepo = get(),
-            appPrefs    = get()
+            appPrefs    = get(),
+            syncCoordinator = get()
         )
     }
 

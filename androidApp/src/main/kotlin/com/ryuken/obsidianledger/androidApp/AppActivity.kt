@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.arkivanov.decompose.defaultComponentContext
 import com.ryuken.obsidianledger.App
+import com.ryuken.obsidianledger.androidApp.di.SyncScheduler
 import com.ryuken.obsidianledger.androidApp.di.androidModule
 import com.ryuken.obsidianledger.core.di.initKoin
 import com.ryuken.obsidianledger.core.auth.SupabaseSessionManager
@@ -77,5 +78,6 @@ class LedgerApplication : Application() {
         initKoin(platformModule = androidModule) {
             androidContext(this@LedgerApplication)
         }
+        getKoin().get<SyncScheduler>().schedule()
     }
 }

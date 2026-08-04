@@ -9,6 +9,9 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.CoroutineWorker
 import com.ryuken.obsidianledger.core.domain.usecase.SyncUseCase
+import com.ryuken.obsidianledger.core.sync.SyncCoordinator
+import io.github.aakira.napier.Napier
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
@@ -28,13 +31,21 @@ class SyncWorker(
         try {
             syncUseCase(userId)
             Result.success()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            if (runAttemptCount < 3) Result.retry() else Result.failure()
+            if (runAttemptCount < 3) {
+                Napier.w("SyncWorker: sync failed, retrying (attempt $runAttemptCount) — ${e.message}", e)
+                Result.retry()
+            } else {
+                Napier.e("SyncWorker: sync failed permanently after $runAttemptCount attempts — ${e.message}", e)
+                Result.failure()
+            }
         }
     }
 }
 
-class SyncScheduler(private val context: Context) {
+class SyncScheduler(private val context: Context) : SyncCoordinator {
     fun schedule() {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -54,4 +65,6 @@ class SyncScheduler(private val context: Context) {
     fun cancel() {
         WorkManager.getInstance(context).cancelUniqueWork("ObsidianLedgerSync")
     }
+
+    override fun onSignedOut() = cancel()
 }
