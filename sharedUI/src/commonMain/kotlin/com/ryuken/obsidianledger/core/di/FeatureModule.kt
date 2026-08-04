@@ -144,9 +144,10 @@ val featureModule = module {
 
     viewModel {
         SplitsViewModel(
-            getGroups = get(),
-            splitRepo = get(),
-            authRepo  = get()
+            getGroups   = get(),
+            splitRepo   = get(),
+            getProfile  = get(),
+            authRepo    = get()
         )
     }
     viewModel { params ->
@@ -165,7 +166,8 @@ val featureModule = module {
         AddSplitExpenseViewModel(
             groupId    = params.get(),
             splitRepo  = get(),
-            addExpense = get()
+            addExpense = get(),
+            authRepo   = get()
         )
     }
 }
