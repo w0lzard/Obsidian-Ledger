@@ -18,9 +18,11 @@ import com.ryuken.obsidianledger.core.domain.model.MonthlySummary
 import com.ryuken.obsidianledger.core.domain.mapper.monthPrefix
 import com.ryuken.obsidianledger.core.domain.mapper.toDomain
 import com.ryuken.obsidianledger.core.domain.dto.toDto
+import com.ryuken.obsidianledger.core.domain.helper.roundToCents
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.time.Clock
 
 class TransactionRepositoryImpl(
     private val db             : LedgerDatabase,
@@ -57,13 +59,15 @@ class TransactionRepositoryImpl(
                 val expense = list
                     .filter { it.type == "EXPENSE" }
                     .sumOf { it.amount }
+                    .roundToCents()
                 val income = list
                     .filter { it.type == "INCOME" }
                     .sumOf { it.amount }
+                    .roundToCents()
                 val breakdown = list
                     .filter { it.type == "EXPENSE" }
                     .groupBy { it.categoryId }
-                    .mapValues { (_, txs) -> txs.sumOf { it.amount } }
+                    .mapValues { (_, txs) -> txs.sumOf { it.amount }.roundToCents() }
                 MonthlySummary(
                     totalExpense      = expense,
                     totalIncome       = income,
@@ -85,7 +89,8 @@ class TransactionRepositoryImpl(
                 createdAt  = transaction.createdAt.toString(),
                 updatedAt  = transaction.updatedAt.toString(),
                 isDirty    = 1L,
-                userId     = transaction.userId
+                userId     = transaction.userId,
+                deletedAt  = null
             )
         }
     }
@@ -102,31 +107,32 @@ class TransactionRepositoryImpl(
                 createdAt  = transaction.createdAt.toString(),
                 updatedAt  = transaction.updatedAt.toString(),
                 isDirty    = 1L,
-                userId     = transaction.userId
+                userId     = transaction.userId,
+                deletedAt  = null
             )
         }
     }
 
     override suspend fun delete(id: String) {
         withContext(Dispatchers.IO) {
-            queries.delete(id = id)
+            queries.markDeleted(id = id, deletedAt = Clock.System.now().toString())
         }
     }
-
 
     override suspend fun syncPendingToRemote(userId: String) {
         withContext(Dispatchers.IO) {
             val dirty = queries.selectDirty().executeAsList()
             if (dirty.isEmpty()) return@withContext
-            supabaseClient.postgrest["transactions"]
-                .upsert(dirty.map { it.toDto() })
+
+            val (tombstoned, live) = dirty.partition { it.deletedAt != null }
+            if (live.isNotEmpty()) {
+                supabaseClient.postgrest["transactions"].upsert(live.map { it.toDto() })
+            }
+            tombstoned.forEach {
+                supabaseClient.postgrest["transactions"].delete { filter { eq("id", it.id) } }
+            }
             dirty.forEach { queries.markClean(it.id) }
+            queries.purgeTombstones()
         }
     }
 }
-
-
-
-
-
-

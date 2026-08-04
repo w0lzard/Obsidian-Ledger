@@ -4,11 +4,15 @@ categoryId TEXT NOT NULL,
 limitAmount REAL NOT NULL,
 period TEXT NOT NULL DEFAULT 'MONTHLY',
 isDirty INTEGER NOT NULL DEFAULT 1,
-userId TEXT NOT NULL
+userId TEXT NOT NULL,
+deletedAt TEXT
 );
 
 selectAll:
-SELECT * FROM BudgetEntity WHERE userId = :userId;
+SELECT * FROM BudgetEntity WHERE userId = :userId AND deletedAt IS NULL;
+
+selectDirty:
+SELECT * FROM BudgetEntity WHERE isDirty = 1;
 
 budgetWithSpending:
 SELECT b.*, COALESCE(SUM(t.amount), 0) AS spent
@@ -17,12 +21,19 @@ LEFT JOIN TransactionEntity t ON t.categoryId = b.categoryId
     AND t.type = 'EXPENSE'
     AND t.date LIKE :monthPrefix || '%'
     AND t.userId = b.userId
-WHERE b.userId = :userId
+    AND t.deletedAt IS NULL
+WHERE b.userId = :userId AND b.deletedAt IS NULL
 GROUP BY b.id;
 
 insert:
-INSERT OR REPLACE INTO BudgetEntity(id, categoryId, limitAmount, period, isDirty, userId)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO BudgetEntity(id, categoryId, limitAmount, period, isDirty, userId, deletedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?);
 
-delete:
-DELETE FROM BudgetEntity WHERE id = :id;
+markClean:
+UPDATE BudgetEntity SET isDirty = 0 WHERE id = :id;
+
+markDeleted:
+UPDATE BudgetEntity SET deletedAt = :deletedAt, isDirty = 1 WHERE id = :id;
+
+purgeTombstones:
+DELETE FROM BudgetEntity WHERE deletedAt IS NOT NULL AND isDirty = 0;

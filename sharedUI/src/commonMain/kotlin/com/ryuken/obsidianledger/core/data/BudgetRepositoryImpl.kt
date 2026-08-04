@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.time.Clock
 
 class BudgetRepositoryImpl(
     private val db              : LedgerDatabase,
@@ -71,35 +72,33 @@ class BudgetRepositoryImpl(
                 limitAmount = budget.limitAmount,
                 period      = budget.period.name,
                 isDirty     = 1L,
-                userId      = budget.userId
+                userId      = budget.userId,
+                deletedAt   = null
             )
         }
     }
 
     override suspend fun delete(id: String) {
         withContext(Dispatchers.IO) {
-            budgetQueries.delete(id = id)
+            budgetQueries.markDeleted(id = id, deletedAt = Clock.System.now().toString())
         }
     }
 
     // ── Sync ──────────────────────────────────────────────────────────
     override suspend fun syncPendingToRemote(userId: String) {
         withContext(Dispatchers.IO) {
-            val dirty = budgetQueries.selectAll(userId).executeAsList()
-                .filter { it.isDirty == 1L }
+            val dirty = budgetQueries.selectDirty().executeAsList()
             if (dirty.isEmpty()) return@withContext
-            supabaseClient.postgrest["budgets"]
-                .upsert(dirty.map { it.toDto() })
-            dirty.forEach {
-                budgetQueries.insert(
-                    id          = it.id,
-                    categoryId  = it.categoryId,
-                    limitAmount = it.limitAmount,
-                    period      = it.period,
-                    isDirty     = 0L,
-                    userId      = it.userId
-                )
+
+            val (tombstoned, live) = dirty.partition { it.deletedAt != null }
+            if (live.isNotEmpty()) {
+                supabaseClient.postgrest["budgets"].upsert(live.map { it.toDto() })
             }
+            tombstoned.forEach {
+                supabaseClient.postgrest["budgets"].delete { filter { eq("id", it.id) } }
+            }
+            dirty.forEach { budgetQueries.markClean(it.id) }
+            budgetQueries.purgeTombstones()
         }
     }
 }

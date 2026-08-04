@@ -1,0 +1,2 @@
+ALTER TABLE TransactionEntity ADD COLUMN deletedAt TEXT;
+ALTER TABLE BudgetEntity ADD COLUMN deletedAt TEXT;
