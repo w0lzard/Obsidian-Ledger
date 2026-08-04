@@ -24,6 +24,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 
 import com.ryuken.obsidianledger.core.preferences.AppPreferences
+import com.ryuken.obsidianledger.core.sync.SyncCoordinator
 import kotlin.time.Clock
 
 class ProfileViewModel(
@@ -35,7 +36,8 @@ class ProfileViewModel(
     private val transactionRepo : TransactionRepository,
     private val budgetRepo      : BudgetRepository,
     private val profileRepo : com.ryuken.obsidianledger.core.domain.repository.ProfileRepository,
-    private val appPrefs    : AppPreferences
+    private val appPrefs    : AppPreferences,
+    private val syncCoordinator : SyncCoordinator
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileState())
@@ -122,13 +124,13 @@ class ProfileViewModel(
             ProfileIntent.ExportCsv -> exportData()
             ProfileIntent.SyncNow   -> syncData()
             ProfileIntent.SignOut    -> performSignOut()
-            
+
             is ProfileIntent.ToggleCurrencyDialog       -> _state.update { it.copy(isCurrencyDialogOpen = intent.open) }
             is ProfileIntent.ToggleThemeDialog          -> _state.update { it.copy(isThemeDialogOpen = intent.open) }
             is ProfileIntent.ToggleEditProfileDialog    -> _state.update { it.copy(isEditProfileDialogOpen = intent.open) }
             is ProfileIntent.ToggleChangePasswordDialog -> _state.update { it.copy(isChangePasswordDialogOpen = intent.open) }
             is ProfileIntent.ToggleImportDialog         -> _state.update { it.copy(isImportDialogOpen = intent.open) }
-            
+
             is ProfileIntent.SetCurrency -> {
                 appPrefs.putString(AppPreferences.KEY_CURRENCY, intent.currency)
                 val symbol = intent.currency.substringAfter("(").removeSuffix(")")
@@ -224,11 +226,11 @@ class ProfileViewModel(
         viewModelScope.launch {
             try {
                 syncUseCase(userId)
-                
+
                 val nowStr = "Just now"
                 appPrefs.putString("last_sync", nowStr)
                 _state.update { it.copy(lastSyncTimestamp = nowStr) }
-                
+
                 _effect.send(ProfileEffect.SyncComplete)
             } catch (e: Exception) {
                 _effect.send(ProfileEffect.Error(e.message ?: "Sync failed"))
@@ -240,6 +242,7 @@ class ProfileViewModel(
         viewModelScope.launch {
             try {
                 signOut()
+                syncCoordinator.onSignedOut()
                 _effect.send(ProfileEffect.SignedOut)
             } catch (e: Exception) {
                 _effect.send(ProfileEffect.Error(e.message ?: "Sign out failed"))
