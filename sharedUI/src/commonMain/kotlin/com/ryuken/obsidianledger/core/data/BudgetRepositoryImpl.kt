@@ -2,6 +2,7 @@ package com.ryuken.obsidianledger.core.data
 
 import com.ryuken.obsidianledger.core.database.BudgetEntity
 import com.ryuken.obsidianledger.core.database.CategoryEntity
+import com.ryuken.obsidianledger.core.domain.error.withRepositoryErrorHandling
 import com.ryuken.obsidianledger.core.domain.model.Budget
 import com.ryuken.obsidianledger.core.domain.model.BudgetPeriod
 import com.ryuken.obsidianledger.core.domain.model.Category
@@ -9,11 +10,13 @@ import com.ryuken.obsidianledger.core.domain.repository.BudgetRepository
 import com.ryuken.obsidianledger.core.database.LedgerDatabase
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import io.github.aakira.napier.Napier
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -61,10 +64,14 @@ class BudgetRepositoryImpl(
                     )
                 }
             }
+            .catch { e ->
+                Napier.e("observeBudgetsWithSpending failed, showing empty list", e)
+                emit(emptyList())
+            }
     }
 
     // ── Write ─────────────────────────────────────────────────────────
-    override suspend fun add(budget: Budget) {
+    override suspend fun add(budget: Budget): Unit = withRepositoryErrorHandling("BudgetRepository.add") {
         withContext(Dispatchers.IO) {
             budgetQueries.insert(
                 id          = budget.id,
@@ -78,14 +85,14 @@ class BudgetRepositoryImpl(
         }
     }
 
-    override suspend fun delete(id: String) {
+    override suspend fun delete(id: String): Unit = withRepositoryErrorHandling("BudgetRepository.delete") {
         withContext(Dispatchers.IO) {
             budgetQueries.markDeleted(id = id, deletedAt = Clock.System.now().toString())
         }
     }
 
     // ── Sync ──────────────────────────────────────────────────────────
-    override suspend fun syncPendingToRemote(userId: String) {
+    override suspend fun syncPendingToRemote(userId: String): Unit = withRepositoryErrorHandling("BudgetRepository.syncPendingToRemote") {
         withContext(Dispatchers.IO) {
             val dirty = budgetQueries.selectDirty().executeAsList()
             if (dirty.isEmpty()) return@withContext

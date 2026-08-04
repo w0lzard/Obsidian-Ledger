@@ -3,16 +3,19 @@ package com.ryuken.obsidianledger.core.data
 import com.ryuken.obsidianledger.core.domain.model.Category
 import com.ryuken.obsidianledger.core.domain.model.Transaction
 import com.ryuken.obsidianledger.core.domain.model.TransactionType
+import com.ryuken.obsidianledger.core.domain.error.withRepositoryErrorHandling
 import com.ryuken.obsidianledger.core.domain.repository.CategoryRepository
 import com.ryuken.obsidianledger.core.domain.repository.TransactionRepository
 import com.ryuken.obsidianledger.core.database.LedgerDatabase
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import io.github.aakira.napier.Napier
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -48,11 +51,14 @@ class TransactionRepositoryImpl(
         ) { list, categories ->
             val categoriesById = categories.associateBy { it.id }
             list.map { it.toDomain(categoriesById) }
+        }.catch { e ->
+            Napier.e("observeByMonth failed, showing empty list", e)
+            emit(emptyList())
         }
     }
 
-    override suspend fun getAll(userId: String): List<Transaction> {
-        return withContext(Dispatchers.IO) {
+    override suspend fun getAll(userId: String): List<Transaction> = withRepositoryErrorHandling("TransactionRepository.getAll") {
+        withContext(Dispatchers.IO) {
             val categoriesById = categoryRepository.observeAll(userId).first().associateBy { it.id }
             queries.selectAll(userId = userId).executeAsList().map { it.toDomain(categoriesById) }
         }
@@ -87,10 +93,14 @@ class TransactionRepositoryImpl(
                     categoryBreakdown = breakdown
                 )
             }
+            .catch { e ->
+                Napier.e("observeMonthlySummary failed, showing empty summary", e)
+                emit(MonthlySummary(totalExpense = 0.0, totalIncome = 0.0, categoryBreakdown = emptyMap()))
+            }
     }
 
     // ── Write ─────────────────────────────────────────────────────────
-    override suspend fun add(transaction: Transaction) {
+    override suspend fun add(transaction: Transaction): Unit = withRepositoryErrorHandling("TransactionRepository.add") {
         withContext(Dispatchers.IO) {
             queries.insert(
                 id         = transaction.id,
@@ -108,7 +118,7 @@ class TransactionRepositoryImpl(
         }
     }
 
-    override suspend fun update(transaction: Transaction) {
+    override suspend fun update(transaction: Transaction): Unit = withRepositoryErrorHandling("TransactionRepository.update") {
         withContext(Dispatchers.IO) {
             queries.insert(
                 id         = transaction.id,
@@ -126,13 +136,13 @@ class TransactionRepositoryImpl(
         }
     }
 
-    override suspend fun delete(id: String) {
+    override suspend fun delete(id: String): Unit = withRepositoryErrorHandling("TransactionRepository.delete") {
         withContext(Dispatchers.IO) {
             queries.markDeleted(id = id, deletedAt = Clock.System.now().toString())
         }
     }
 
-    override suspend fun syncPendingToRemote(userId: String) {
+    override suspend fun syncPendingToRemote(userId: String): Unit = withRepositoryErrorHandling("TransactionRepository.syncPendingToRemote") {
         withContext(Dispatchers.IO) {
             val dirty = queries.selectDirty().executeAsList()
             if (dirty.isEmpty()) return@withContext
