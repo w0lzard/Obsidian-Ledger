@@ -1,6 +1,7 @@
 package com.ryuken.obsidianledger.core.network
 
 import io.github.aakira.napier.Napier
+import kotlinx.coroutines.CancellationException
 import io.ktor.client.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
@@ -71,6 +72,8 @@ class ResendEmailService(
                 Result.failure(Exception("Failed to send email: ${response.status}"))
             }
 
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Napier.e("ResendEmailService: exception — ${e.message}", e)
             Result.failure(e)
