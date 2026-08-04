@@ -3,6 +3,7 @@ package com.ryuken.obsidianledger.core.data
 import com.ryuken.obsidianledger.core.domain.model.Category
 import com.ryuken.obsidianledger.core.domain.model.Transaction
 import com.ryuken.obsidianledger.core.domain.model.TransactionType
+import com.ryuken.obsidianledger.core.domain.repository.CategoryRepository
 import com.ryuken.obsidianledger.core.domain.repository.TransactionRepository
 import com.ryuken.obsidianledger.core.database.LedgerDatabase
 import app.cash.sqldelight.coroutines.asFlow
@@ -12,6 +13,8 @@ import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import com.ryuken.obsidianledger.core.domain.model.MonthlySummary
@@ -25,8 +28,9 @@ import kotlinx.serialization.Serializable
 import kotlin.time.Clock
 
 class TransactionRepositoryImpl(
-    private val db             : LedgerDatabase,
-    private val supabaseClient : SupabaseClient
+    private val db               : LedgerDatabase,
+    private val supabaseClient   : SupabaseClient,
+    private val categoryRepository : CategoryRepository
 ) : TransactionRepository {
 
     private val queries = db.transactionEntityQueries
@@ -38,11 +42,20 @@ class TransactionRepositoryImpl(
         month  : Int
     ): Flow<List<Transaction>> {
         val prefix = monthPrefix(year, month)
-        return queries
-            .selectByMonth(userId = userId, monthPrefix = prefix)
-            .asFlow()
-            .mapToList(Dispatchers.IO)
-            .map { list -> list.map { it.toDomain() } }
+        return combine(
+            queries.selectByMonth(userId = userId, monthPrefix = prefix).asFlow().mapToList(Dispatchers.IO),
+            categoryRepository.observeAll(userId)
+        ) { list, categories ->
+            val categoriesById = categories.associateBy { it.id }
+            list.map { it.toDomain(categoriesById) }
+        }
+    }
+
+    override suspend fun getAll(userId: String): List<Transaction> {
+        return withContext(Dispatchers.IO) {
+            val categoriesById = categoryRepository.observeAll(userId).first().associateBy { it.id }
+            queries.selectAll(userId = userId).executeAsList().map { it.toDomain(categoriesById) }
+        }
     }
 
     override fun observeMonthlySummary(
