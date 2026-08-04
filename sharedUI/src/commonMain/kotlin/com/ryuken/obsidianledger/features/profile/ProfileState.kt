@@ -21,7 +21,6 @@ data class ProfileState(
     val isThemeDialogOpen          : Boolean      = false,
     val isEditProfileDialogOpen    : Boolean      = false,
     val isChangePasswordDialogOpen : Boolean      = false,
-    val isImportDialogOpen         : Boolean      = false,
     val isAuthActionLoading        : Boolean      = false
 ) {
     val initials: String

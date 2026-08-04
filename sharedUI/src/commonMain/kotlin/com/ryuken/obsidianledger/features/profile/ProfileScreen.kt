@@ -36,7 +36,6 @@ fun ProfileScreen(
         viewModel.effect.collect { effect ->
             when (effect) {
                 ProfileEffect.SignedOut        -> onSignedOut()
-                is ProfileEffect.CsvExported   -> snackbarHostState.showSnackbar("CSV exported")
                 is ProfileEffect.Error         -> snackbarHostState.showSnackbar(effect.message)
                 ProfileEffect.SyncComplete     -> snackbarHostState.showSnackbar("Sync complete")
                 is ProfileEffect.ShowMessage   -> snackbarHostState.showSnackbar(effect.message)
@@ -57,21 +56,6 @@ fun ProfileScreen(
             currentValue = state.theme,
             onDismiss = { viewModel.onIntent(ProfileIntent.ToggleThemeDialog(false)) },
             onSelect = { viewModel.onIntent(ProfileIntent.SetTheme(it)) }
-        )
-    }
-
-    if (state.isImportDialogOpen) {
-        AlertDialog(
-            onDismissRequest = { viewModel.onIntent(ProfileIntent.ToggleImportDialog(false)) },
-            title = { Text("Import Data", color = colors.onSurfacePrimary) },
-            text = { Text("Direct CSV imports are currently only supported via the web dashboard. Local native file picking will be available soon.", color = colors.onSurfaceSecondary) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.onIntent(ProfileIntent.ToggleImportDialog(false)) }) {
-                    Text("Got it", color = colors.accentStart)
-                }
-            },
-            containerColor = colors.surfaceContainer,
-            titleContentColor = colors.onSurfacePrimary
         )
     }
 
@@ -290,10 +274,10 @@ fun ProfileScreen(
                             onClick = { viewModel.onIntent(ProfileIntent.ExportCsv) }
                         )
                         SettingsRow(
-                            icon = Icons.Default.FileUpload, 
-                            label = "Import", 
+                            icon = Icons.Default.FileUpload,
+                            label = "Import",
                             colors = colors,
-                            onClick = { viewModel.onIntent(ProfileIntent.ToggleImportDialog(true)) }
+                            onClick = { viewModel.onIntent(ProfileIntent.ImportCsv) }
                         )
                         SettingsRow(
                             icon = Icons.Default.Sync,

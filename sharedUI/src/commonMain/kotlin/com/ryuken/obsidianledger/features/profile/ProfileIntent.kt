@@ -3,15 +3,15 @@ package com.ryuken.obsidianledger.features.profile
 sealed interface ProfileIntent {
     data object Refresh              : ProfileIntent
     data object ExportCsv            : ProfileIntent
+    data object ImportCsv            : ProfileIntent
     data object SyncNow              : ProfileIntent
     data object SignOut               : ProfileIntent
-    
+
     // Dialog Toggles
     data class ToggleCurrencyDialog(val open: Boolean)      : ProfileIntent
     data class ToggleThemeDialog(val open: Boolean)         : ProfileIntent
     data class ToggleEditProfileDialog(val open: Boolean)   : ProfileIntent
     data class ToggleChangePasswordDialog(val open: Boolean): ProfileIntent
-    data class ToggleImportDialog(val open: Boolean)        : ProfileIntent
 
     // Actions
     data class SetCurrency(val currency: String)            : ProfileIntent
@@ -22,7 +22,6 @@ sealed interface ProfileIntent {
 }
 
 sealed interface ProfileEffect {
-    data class  CsvExported(val data: String) : ProfileEffect
     data object SignedOut                      : ProfileEffect
     data class  Error(val message: String)    : ProfileEffect
     data object SyncComplete                   : ProfileEffect

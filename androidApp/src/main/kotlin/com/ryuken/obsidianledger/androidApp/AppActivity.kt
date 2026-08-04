@@ -15,6 +15,8 @@ import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.dialogs.init
 import org.koin.android.ext.koin.androidContext
 import org.koin.java.KoinJavaComponent.getKoin
 
@@ -24,6 +26,12 @@ class AppActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()
+
+        // filekit-core auto-initializes its Context via App Startup, but the picker/saver
+        // ActivityResultRegistry has no such auto-init — must be wired per-Activity, before
+        // the activity reaches STARTED, or FileKit.openFilePicker/openFileSaver throw
+        // FileKitNotInitializedException.
+        FileKit.init(this)
 
         // Check if the user already has a valid Supabase session (persisted)
         val isAlreadySignedIn = try {

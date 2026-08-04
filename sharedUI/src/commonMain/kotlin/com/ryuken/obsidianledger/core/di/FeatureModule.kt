@@ -28,6 +28,7 @@ import com.ryuken.obsidianledger.features.budgets.DeleteBudgetUseCase
 import com.ryuken.obsidianledger.features.profile.ProfileViewModel
 import com.ryuken.obsidianledger.features.profile.SignOutUseCase
 import com.ryuken.obsidianledger.features.profile.ExportCsvUseCase
+import com.ryuken.obsidianledger.features.profile.ImportCsvUseCase
 import com.ryuken.obsidianledger.features.splits.SplitsViewModel
 import com.ryuken.obsidianledger.features.splits.GroupDetailViewModel
 import com.ryuken.obsidianledger.features.splits.AddSplitExpenseViewModel
@@ -104,12 +105,14 @@ val featureModule = module {
     // ── Profile ───────────────────────────────────────────────────────
     factory { SignOutUseCase(authRepo = get()) }
     factory { ExportCsvUseCase(transactionRepo = get()) }
+    factory { ImportCsvUseCase(transactionRepo = get(), categoryRepo = get()) }
     factory { SyncUseCase(transactionRepo = get(), budgetRepo = get()) }
     viewModel {
         ProfileViewModel(
             getProfile  = get(),
             signOut     = get(),
             exportCsv   = get(),
+            importCsv   = get(),
             syncUseCase = get(),
             authRepo    = get(),
             transactionRepo = get(),

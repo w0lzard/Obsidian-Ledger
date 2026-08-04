@@ -35,7 +35,9 @@ kotlin {
         minSdk = 26
     }
 
-    listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach {
+    // iosX64 (Intel Mac simulator) dropped — FileKit ships no variant for it, and it's
+    // EOL-adjacent now that Apple Silicon Macs use iosSimulatorArm64 for the simulator.
+    listOf(iosArm64(), iosSimulatorArm64()).forEach {
         it.binaries.framework {
             baseName = "sharedUI"
             isStatic = true
@@ -92,6 +94,11 @@ kotlin {
 
             // Lifecycle ViewModel (KMP)
             implementation(libs.lifecycle.viewmodel)
+
+            // File picking / saving (CSV import/export) — api, not implementation:
+            // AppActivity (androidApp module) needs FileKit.init(activity) directly.
+            api(libs.filekit.core)
+            api(libs.filekit.dialogs.compose)
         }
 
         androidMain.dependencies {

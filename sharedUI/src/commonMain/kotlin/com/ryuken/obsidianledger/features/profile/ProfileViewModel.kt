@@ -9,6 +9,14 @@ import com.ryuken.obsidianledger.core.domain.repository.TransactionRepository
 import com.ryuken.obsidianledger.core.domain.usecase.SyncUseCase
 import com.ryuken.obsidianledger.features.dashboard.GetProfileUseCase
 import io.github.aakira.napier.Napier
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.dialogs.FileKitType
+import io.github.vinceglb.filekit.dialogs.openFilePicker
+import io.github.vinceglb.filekit.dialogs.openFileSaver
+import io.github.vinceglb.filekit.name
+import io.github.vinceglb.filekit.readString
+import io.github.vinceglb.filekit.writeString
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +38,7 @@ class ProfileViewModel(
     private val getProfile  : GetProfileUseCase,
     private val signOut     : SignOutUseCase,
     private val exportCsv   : ExportCsvUseCase,
+    private val importCsv   : ImportCsvUseCase,
     private val syncUseCase : SyncUseCase,
     private val authRepo    : AuthRepository,
     private val transactionRepo : TransactionRepository,
@@ -42,7 +51,9 @@ class ProfileViewModel(
     private val _state = MutableStateFlow(ProfileState())
     val state = _state.asStateFlow()
 
-    private val _effect = Channel<ProfileEffect>()
+    // Buffered so an effect sent before the UI collector attaches isn't dropped
+    // by the default rendezvous Channel.
+    private val _effect = Channel<ProfileEffect>(Channel.BUFFERED)
     val effect = _effect.receiveAsFlow()
 
     init {
@@ -110,6 +121,7 @@ class ProfileViewModel(
                 if (userId != null) loadProfile(userId)
             }
             ProfileIntent.ExportCsv -> exportData()
+            ProfileIntent.ImportCsv -> importData()
             ProfileIntent.SyncNow   -> syncData()
             ProfileIntent.SignOut    -> performSignOut()
 
@@ -117,7 +129,6 @@ class ProfileViewModel(
             is ProfileIntent.ToggleThemeDialog          -> _state.update { it.copy(isThemeDialogOpen = intent.open) }
             is ProfileIntent.ToggleEditProfileDialog    -> _state.update { it.copy(isEditProfileDialogOpen = intent.open) }
             is ProfileIntent.ToggleChangePasswordDialog -> _state.update { it.copy(isChangePasswordDialogOpen = intent.open) }
-            is ProfileIntent.ToggleImportDialog         -> _state.update { it.copy(isImportDialogOpen = intent.open) }
 
             is ProfileIntent.SetCurrency -> {
                 appPrefs.putString(AppPreferences.KEY_CURRENCY, intent.currency)
@@ -202,9 +213,37 @@ class ProfileViewModel(
         viewModelScope.launch {
             try {
                 val csv = exportCsv(userId)
-                _effect.send(ProfileEffect.CsvExported(csv))
+                val file = FileKit.openFileSaver(
+                    suggestedName = "obsidian-ledger-export",
+                    extension     = "csv"
+                )
+                if (file != null) {
+                    file.writeString(csv)
+                    _effect.send(ProfileEffect.ShowMessage("Exported to ${file.name}"))
+                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _effect.send(ProfileEffect.Error(e.message ?: "Export failed"))
+            }
+        }
+    }
+
+    private fun importData() {
+        val userId = authRepo.currentUserId() ?: return
+        viewModelScope.launch {
+            try {
+                val file = FileKit.openFilePicker(type = FileKitType.File(extensions = setOf("csv")))
+                if (file != null) {
+                    val result = importCsv(userId, file.readString())
+                    val message = "Imported ${result.imported} transaction(s)" +
+                        if (result.skipped > 0) ", skipped ${result.skipped} invalid row(s)" else ""
+                    _effect.send(ProfileEffect.ShowMessage(message))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _effect.send(ProfileEffect.Error(e.message ?: "Import failed"))
             }
         }
     }

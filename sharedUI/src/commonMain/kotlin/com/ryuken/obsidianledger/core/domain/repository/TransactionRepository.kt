@@ -18,7 +18,6 @@ interface TransactionRepository {
     ): Flow<MonthlySummary>
 
     suspend fun getAll(userId: String): List<Transaction>
-    suspend fun getAll(userId: String): List<Transaction>
     suspend fun add(transaction: Transaction)
     suspend fun update(transaction: Transaction)
     suspend fun delete(id: String)
