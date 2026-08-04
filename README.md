@@ -90,12 +90,5 @@ APK output is typically under `androidApp/build/outputs/apk/debug/`.
 
 Then open `iosApp/iosApp.xcodeproj` or `iosApp/iosApp.xcworkspace` in Xcode and run.
 
-## Release Recommendation
 
-- Tag: `v1.0.0`
-- Title: `v1.0.0 - Obsidian Ledger Android Release`
-
-## License
-
-Add a license file (for example `MIT`) before public distribution.
 
