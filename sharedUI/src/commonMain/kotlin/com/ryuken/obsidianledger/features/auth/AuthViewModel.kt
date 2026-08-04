@@ -25,7 +25,9 @@ class AuthViewModel(
     private val _state = MutableStateFlow(AuthState())
     val state = _state.asStateFlow()
 
-    private val _effect = Channel<AuthEffect>()
+    // Buffered so an effect sent before the UI collector attaches isn't dropped
+    // by the default rendezvous Channel.
+    private val _effect = Channel<AuthEffect>(Channel.BUFFERED)
     val effect = _effect.receiveAsFlow()
 
     init {
