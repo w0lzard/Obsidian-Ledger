@@ -17,7 +17,6 @@ import com.ryuken.obsidianledger.core.data.ProfileRepositoryImpl
 import com.ryuken.obsidianledger.core.data.SplitRepositoryImpl
 
 import io.github.jan.supabase.auth.Auth
-import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
@@ -51,9 +50,6 @@ val coreModule = module {
                 autoSaveToStorage  = true
                 alwaysAutoRefresh  = true
                 sessionManager     = SettingsSessionManager(get<Settings>())
-                scheme = "obsidianledger"
-                host = "auth"
-                flowType = FlowType.IMPLICIT
             }
             install(Postgrest)
             install(Realtime)

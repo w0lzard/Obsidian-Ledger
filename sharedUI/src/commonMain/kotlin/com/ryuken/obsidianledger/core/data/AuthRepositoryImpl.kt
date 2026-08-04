@@ -6,6 +6,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.providers.builtin.IDToken
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -22,6 +23,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlinx.serialization.json.put
+
+private val jwtJson = Json { ignoreUnknownKeys = true }
 
 class AuthRepositoryImpl(
     private val supabaseClient: SupabaseClient
@@ -53,11 +56,12 @@ class AuthRepositoryImpl(
         }
     }
 
-    override suspend fun signInWithGoogle(redirectTo: String) {
+    override suspend fun signInWithGoogleIdToken(idToken: String, nonce: String) {
         withContext(Dispatchers.IO) {
-            supabaseClient.auth.signInWith(Google, redirectUrl = redirectTo) {
-                scopes.add("email")
-                scopes.add("profile")
+            supabaseClient.auth.signInWith(IDToken) {
+                this.idToken = idToken
+                this.nonce = nonce
+                provider = Google
             }
         }
     }
@@ -94,7 +98,7 @@ class AuthRepositoryImpl(
                 // Pad to multiple of 4 if needed
                 val payload = parts[1].padEnd(parts[1].length + (4 - parts[1].length % 4) % 4, '=')
                 val decoded = Base64.UrlSafe.decode(payload).decodeToString()
-                val json = Json { ignoreUnknownKeys = true }.parseToJsonElement(decoded).jsonObject
+                val json = jwtJson.parseToJsonElement(decoded).jsonObject
                 json["sub"]?.jsonPrimitive?.content
             } else null
         } catch (e: Exception) {
@@ -105,7 +109,7 @@ class AuthRepositoryImpl(
 
     override fun currentUserId(): String? {
         val auth = supabaseClient.auth
-        val userId = auth.currentUserOrNull()?.id 
+        val userId = auth.currentUserOrNull()?.id
             ?: extractUserIdFromJwt(auth.currentSessionOrNull()?.accessToken)
         Napier.d("AuthRepository.currentUserId: $userId")
         return userId

@@ -22,26 +22,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="https"
-                    android:host="mqyfrodljzbm.supabase.co"
-                    android:path="/auth/v1/callback" />
-            </intent-filter>
-
-            <!-- Supabase app scheme OAuth callback -->
-            <intent-filter android:autoVerify="false">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="obsidianledger"
-                    android:host="auth" />
-            </intent-filter>
-
         </activity>
 
     </application>

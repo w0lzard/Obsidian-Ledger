@@ -10,6 +10,7 @@ captures
 .externalNativeBuild
 .cxx
 local.properties
+client_secret*.json
 xcuserdata/
 Pods/
 *.jks

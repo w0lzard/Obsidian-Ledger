@@ -25,6 +25,8 @@ androidx-work = "2.10.1"
 koin-android = "4.2.0"
 lifecycle = "2.9.1"
 androidx-security-crypto = "1.1.0"
+androidx-credentials = "1.5.0"
+googleid = "1.1.1"
 
 [libraries]
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-multiplatform" }
@@ -86,6 +88,9 @@ lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-vie
 # Android specific
 androidx-work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
 androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "androidx-security-crypto" }
+androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "androidx-credentials" }
+androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "androidx-credentials" }
+googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

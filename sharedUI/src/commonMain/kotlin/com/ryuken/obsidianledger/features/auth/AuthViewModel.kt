@@ -2,7 +2,7 @@ package com.ryuken.obsidianledger.features.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ryuken.obsidianledger.core.auth.SupabaseSessionManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,19 +51,8 @@ class AuthViewModel(
                             io.github.aakira.napier.Napier.e("AuthViewModel: refresh failure checking session")
                             _state.update { it.copy(isLoading = false) }
                         }
-                        else -> {
-                            _state.update { it.copy(isLoading = false) }
-                        }
                     }
                 }
-        }
-        
-        // Setup existing observer for OAuth deep link
-        viewModelScope.launch {
-            com.ryuken.obsidianledger.core.auth.SupabaseSessionManager.sessionEstablished.collect {
-                _state.update { it.copy(isLoading = false) }
-                _effect.send(AuthEffect.AuthSuccess)
-            }
         }
     }
 
@@ -74,16 +63,21 @@ class AuthViewModel(
             is AuthIntent.PasswordChanged    -> _state.update { it.copy(password = intent.password, error = null) }
             is AuthIntent.DisplayNameChanged -> _state.update { it.copy(displayName = intent.name, error = null) }
             AuthIntent.SubmitClick           -> submit()
-            AuthIntent.GoogleSignInClick     -> onGoogleSignIn()
+            is AuthIntent.GoogleIdTokenReceived -> onGoogleIdTokenReceived(intent.idToken, intent.nonce)
+            is AuthIntent.GoogleSignInFailed -> _state.update { it.copy(isLoading = false, error = intent.message) }
         }
     }
 
-    private fun onGoogleSignIn() {
+    private fun onGoogleIdTokenReceived(idToken: String, nonce: String) {
+        if (_state.value.isLoading) return
+
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
             try {
-                signInWithGoogle(redirectTo = "obsidianledger://auth/callback")
-                // Success is handled by deep link interceptor in AppActivity which sets the session
+                signInWithGoogle(idToken = idToken, nonce = nonce)
+                // AuthSuccess is emitted by the sessionStatus collector above once Supabase confirms the session.
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 val message = e.message ?: "Google Sign-in failed"
                 _state.update { it.copy(error = message) }
@@ -96,6 +90,7 @@ class AuthViewModel(
 
     private fun submit() {
         val s = _state.value
+        if (s.isLoading) return
         if (s.email.isBlank() || s.password.isBlank()) {
             _state.update { it.copy(error = "Email and password are required") }
             return
@@ -113,6 +108,8 @@ class AuthViewModel(
                     AuthTab.CREATE_ACCOUNT -> signUp(s.email, s.password, s.displayName)
                 }
                 _effect.send(AuthEffect.AuthSuccess)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 val message = e.message ?: "Authentication failed"
                 _state.update { it.copy(error = message) }

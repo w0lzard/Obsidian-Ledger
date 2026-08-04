@@ -22,6 +22,13 @@ sqldelight {
 }
 
 kotlin {
+    compilerOptions {
+        freeCompilerArgs.addAll(
+            "-Xexpect-actual-classes",
+            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi"
+        )
+    }
+
     android {
         namespace = "com.ryuken.obsidianledger"
         compileSdk = 36
@@ -90,6 +97,9 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.sqldelight.android)
             implementation(libs.ktor.client.android)
+            implementation(libs.androidx.credentials)
+            implementation(libs.androidx.credentials.play.services.auth)
+            implementation(libs.googleid)
         }
 
         iosMain.dependencies {
@@ -118,4 +128,5 @@ buildConfig {
 
     buildConfigField("SUPABASE_URL", localProperties.getProperty("SUPABASE_URL") ?: "")
     buildConfigField("SUPABASE_KEY", localProperties.getProperty("SUPABASE_KEY") ?: "")
+    buildConfigField("GOOGLE_WEB_CLIENT_ID", localProperties.getProperty("GOOGLE_WEB_CLIENT_ID") ?: "")
 }

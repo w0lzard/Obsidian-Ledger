@@ -1,7 +1,6 @@
 package com.ryuken.obsidianledger.androidApp
 
 import android.app.Application
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,13 +10,11 @@ import com.ryuken.obsidianledger.App
 import com.ryuken.obsidianledger.androidApp.di.SyncScheduler
 import com.ryuken.obsidianledger.androidApp.di.androidModule
 import com.ryuken.obsidianledger.core.di.initKoin
-import com.ryuken.obsidianledger.core.auth.SupabaseSessionManager
 import com.ryuken.obsidianledger.navigation.RootComponent
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.handleDeeplinks
 import org.koin.android.ext.koin.androidContext
 import org.koin.java.KoinJavaComponent.getKoin
 
@@ -27,9 +24,6 @@ class AppActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()
-
-        // Handle OAuth redirect that launched the activity cold
-        handleIntent(intent)
 
         // Check if the user already has a valid Supabase session (persisted)
         val isAlreadySignedIn = try {
@@ -49,30 +43,6 @@ class AppActivity : ComponentActivity() {
 
         setContent {
             App(root = root)
-        }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        handleIntent(intent)
-    }
-
-    private fun handleIntent(intent: Intent?) {
-        val data = intent?.data ?: return
-        when {
-            data.host == "mqyfrodljzbm.supabase.co" -> {
-                try {
-                    getKoin().get<SupabaseClient>().handleDeeplinks(intent)
-                    SupabaseSessionManager.onSessionEstablished()
-                } catch (_: Exception) { }
-            }
-            data.scheme == "obsidianledger" && data.host == "auth" -> {
-                try {
-                    getKoin().get<SupabaseClient>().handleDeeplinks(intent)
-                    SupabaseSessionManager.onSessionEstablished()
-                } catch (_: Exception) { }
-            }
         }
     }
 }

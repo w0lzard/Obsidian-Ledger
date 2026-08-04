@@ -27,11 +27,6 @@ android {
             "SUPABASE_KEY",
             "\"${props.getProperty("SUPABASE_KEY")}\""
         )
-        buildConfigField(
-            "String",
-            "GOOGLE_ANDROID_CLIENT_ID",
-            "\"${props.getProperty("GOOGLE_ANDROID_CLIENT_ID")}\""
-        )
 
     }
     buildFeatures {

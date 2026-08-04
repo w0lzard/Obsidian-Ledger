@@ -220,8 +220,14 @@ fun AuthScreen(
             Spacer(Modifier.height(24.dp))
 
             // ── Google Button ───────────────────────────────────
+            val launchGoogleSignIn = rememberGoogleSignInLauncher { result ->
+                result.fold(
+                    onSuccess = { viewModel.onIntent(AuthIntent.GoogleIdTokenReceived(it.idToken, it.nonce)) },
+                    onFailure = { viewModel.onIntent(AuthIntent.GoogleSignInFailed(it.message ?: "Google sign-in failed")) }
+                )
+            }
             OutlinedButton(
-                onClick  = { viewModel.onIntent(AuthIntent.GoogleSignInClick) },
+                onClick  = launchGoogleSignIn,
                 enabled  = !state.isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
