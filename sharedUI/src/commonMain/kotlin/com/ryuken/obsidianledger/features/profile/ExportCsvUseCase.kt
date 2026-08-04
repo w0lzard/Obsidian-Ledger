@@ -1,6 +1,7 @@
 package com.ryuken.obsidianledger.features.profile
 
 import com.ryuken.obsidianledger.core.domain.helper.csvField
+import com.ryuken.obsidianledger.core.domain.helper.sanitizeCsvFormulaInjection
 import com.ryuken.obsidianledger.core.domain.repository.TransactionRepository
 
 class ExportCsvUseCase(
@@ -14,9 +15,12 @@ class ExportCsvUseCase(
             listOf(
                 tx.date.toString(),
                 tx.type.name,
-                tx.category.name,
+                // Category name and note are free text (user-typed, or from an imported
+                // CSV) — sanitize before category/amount stay as-is since a date, enum
+                // name, and numeric amount can never start with a formula-trigger char.
+                sanitizeCsvFormulaInjection(tx.category.name),
                 tx.amount.toString(),
-                tx.note ?: ""
+                sanitizeCsvFormulaInjection(tx.note ?: "")
             ).joinToString(",") { csvField(it) }
         }
         return if (transactions.isEmpty()) header else "$header\n$rows"

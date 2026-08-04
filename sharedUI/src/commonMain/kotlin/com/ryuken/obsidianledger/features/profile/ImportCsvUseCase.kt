@@ -2,6 +2,7 @@ package com.ryuken.obsidianledger.features.profile
 
 import com.benasher44.uuid.uuid4
 import com.ryuken.obsidianledger.core.domain.helper.parseCsvLine
+import com.ryuken.obsidianledger.core.domain.helper.unsanitizeCsvFormulaInjection
 import com.ryuken.obsidianledger.core.domain.model.Category
 import com.ryuken.obsidianledger.core.domain.model.Transaction
 import com.ryuken.obsidianledger.core.domain.model.TransactionType
@@ -38,9 +39,9 @@ class ImportCsvUseCase(
             val fields = parseCsvLine(line)
             val date = fields.getOrNull(0)?.trim()?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
             val type = fields.getOrNull(1)?.trim()?.let { runCatching { TransactionType.valueOf(it) }.getOrNull() }
-            val categoryName = fields.getOrNull(2)?.trim()
+            val categoryName = fields.getOrNull(2)?.trim()?.let { unsanitizeCsvFormulaInjection(it) }
             val amount = fields.getOrNull(3)?.trim()?.toDoubleOrNull()
-            val note = fields.getOrNull(4)?.takeIf { it.isNotBlank() }
+            val note = fields.getOrNull(4)?.let { unsanitizeCsvFormulaInjection(it) }?.takeIf { it.isNotBlank() }
 
             if (date == null || type == null || categoryName.isNullOrBlank() || amount == null) {
                 skipped++
