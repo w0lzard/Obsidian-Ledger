@@ -13,6 +13,8 @@ import com.ryuken.obsidianledger.androidApp.di.androidModule
 import com.ryuken.obsidianledger.core.di.initKoin
 import com.ryuken.obsidianledger.core.auth.SupabaseSessionManager
 import com.ryuken.obsidianledger.navigation.RootComponent
+import io.github.aakira.napier.DebugAntilog
+import io.github.aakira.napier.Napier
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.handleDeeplinks
@@ -33,7 +35,10 @@ class AppActivity : ComponentActivity() {
         val isAlreadySignedIn = try {
             val supabase = getKoin().get<SupabaseClient>()
             supabase.auth.currentSessionOrNull() != null
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            // Surfaces real init failures and would also catch a malformed/intercepted
+            // session payload rather than silently treating it as "signed out".
+            Napier.w("AppActivity: session check failed, treating as signed out", e)
             false
         }
 
@@ -75,6 +80,11 @@ class AppActivity : ComponentActivity() {
 class LedgerApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // No antilog is attached in release, so Napier.d/e/w calls are no-ops there —
+        // this is what keeps auth token/session/userId logging out of release logcat.
+        if (BuildConfig.DEBUG) {
+            Napier.base(DebugAntilog())
+        }
         initKoin(platformModule = androidModule) {
             androidContext(this@LedgerApplication)
         }

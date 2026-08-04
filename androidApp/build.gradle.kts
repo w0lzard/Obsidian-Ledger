@@ -51,4 +51,5 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.security.crypto)
+    implementation(libs.napier)
 }
