@@ -70,7 +70,7 @@ kotlin {
             implementation(libs.napier)
             implementation(libs.uuid)
             implementation(libs.serialization.json)
-            
+
             // Settings
             implementation(libs.multiplatform.settings)
             implementation(libs.multiplatform.settings.no.arg)
@@ -95,6 +95,10 @@ kotlin {
         iosMain.dependencies {
             implementation(libs.sqldelight.native)
             implementation(libs.ktor.client.ios)
+        }
+
+        commonTest.dependencies {
+            implementation(kotlin("test"))
         }
     }
 }
