@@ -108,12 +108,14 @@ class FakeSplitRepository : SplitRepository {
     val expensesByGroup = MutableStateFlow<Map<String, List<SplitExpense>>>(emptyMap())
     val balancesByGroup = MutableStateFlow<Map<String, List<MemberBalance>>>(emptyMap())
     val settlements = mutableListOf<Settlement>()
+    var failOnCreate: Exception? = null
     var failOnSettlement: Exception? = null
 
     override fun observeGroups(userId: String): Flow<List<SplitGroup>> = groups
     override fun observeGroup(groupId: String): Flow<SplitGroup> =
         groups.map { list -> list.firstOrNull { it.id == groupId } ?: list.first() }
     override suspend fun createGroup(name: String, createdBy: String, creatorDisplayName: String, memberNames: List<String>): SplitGroup {
+        failOnCreate?.let { throw it }
         val group = SplitGroup(id = "g-${groups.value.size}", name = name, members = emptyList(), createdBy = createdBy, createdAt = Instant.parse("2026-01-01T00:00:00Z"))
         groups.value = groups.value + group
         return group

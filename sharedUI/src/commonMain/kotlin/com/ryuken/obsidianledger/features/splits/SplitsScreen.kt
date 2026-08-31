@@ -30,10 +30,25 @@ fun SplitsScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val colors = LedgerTheme.colors
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) { viewModel.onIntent(SplitsIntent.Refresh) }
 
-    Box(modifier = Modifier.fillMaxSize().background(colors.surfaceBase)) {
+    // Channel-backed one-shot effects: safe under recomposition and config changes.
+    LaunchedEffect(Unit) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is SplitsEffect.GroupCreated -> onNavigateToGroup(effect.groupId)
+                is SplitsEffect.Error        -> snackbarHostState.showSnackbar(effect.message)
+            }
+        }
+    }
+
+    Scaffold(
+        containerColor = colors.surfaceBase,
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
+    Box(modifier = Modifier.fillMaxSize().background(colors.surfaceBase).padding(padding)) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(20.dp),
@@ -98,6 +113,7 @@ fun SplitsScreen(
         ) {
             Icon(Icons.Default.Add, contentDescription = "Create Group")
         }
+    }
     }
 }
 
