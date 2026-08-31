@@ -1,6 +1,5 @@
 package com.ryuken.obsidianledger.core.data
 
-import com.benasher44.uuid.uuid4
 import com.ryuken.obsidianledger.core.domain.dto.GroupMemberDto
 import com.ryuken.obsidianledger.core.domain.dto.SplitExpenseDto
 import com.ryuken.obsidianledger.core.domain.dto.SplitExpenseShareDto
@@ -25,10 +24,8 @@ import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import io.github.jan.supabase.realtime.selectAsFlow
 import io.github.jan.supabase.realtime.selectSingleValueAsFlow
 import io.github.aakira.napier.Napier
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
@@ -36,7 +33,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlin.time.Clock
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlin.time.Instant
 
 class SplitRepositoryImpl(
     private val db: SupabaseClient
@@ -89,31 +90,23 @@ class SplitRepositoryImpl(
         memberNames: List<String>
     ): SplitGroup = withRepositoryErrorHandling("SplitRepository.createGroup") {
         withContext(Dispatchers.IO) {
-            val groupId = uuid4().toString()
-            val now = Clock.System.now()
-
-            groupsTable.insert(
-                SplitGroupDto(id = groupId, name = name, createdBy = createdBy, createdAt = now.toString())
-            )
-
-            val memberDtos = listOf(
-                GroupMemberDto(id = uuid4().toString(), groupId = groupId, userId = createdBy, displayName = creatorDisplayName)
-            ) + memberNames.map { memberName ->
-                GroupMemberDto(id = uuid4().toString(), groupId = groupId, userId = null, displayName = memberName)
-            }
-            try {
-                retryTransient { membersTable.insert(memberDtos) }
-            } catch (e: Exception) {
-                runCatching { groupsTable.delete { filter { eq("id", groupId) } } }
-                throw e
-            }
+            // Atomic server-side RPC (group + all members in one transaction) — replaces
+            // the old insert-then-compensate dance that could leave half a group behind.
+            val result = db.postgrest.rpc(
+                function = "create_split_group",
+                parameters = buildJsonObject {
+                    put("p_name", name)
+                    put("p_creator_display_name", creatorDisplayName)
+                    put("p_member_names", JsonArray(memberNames.map { JsonPrimitive(it) }))
+                }
+            ).decodeAs<CreateGroupRpcResult>()
 
             SplitGroup(
-                id        = groupId,
-                name      = name,
-                members   = memberDtos.map { it.toDomain() },
-                createdBy = createdBy,
-                createdAt = now
+                id        = result.id,
+                name      = result.name,
+                members   = result.members.map { it.toDomain() },
+                createdBy = result.createdBy,
+                createdAt = Instant.parse(result.createdAt)
             )
         }
     }
@@ -171,55 +164,39 @@ class SplitRepositoryImpl(
         shares: List<SplitShare>
     ): SplitExpense = withRepositoryErrorHandling("SplitRepository.addExpense") {
         withContext(Dispatchers.IO) {
-            val expenseId = uuid4().toString()
-            val now = Clock.System.now()
             val amountCents = amount.toCents()
 
             // ponytail: assumes an equal split (only mode the UI offers today); a custom-amount
             // split would need to distribute by weight instead of by even count.
             val shareCents = distributeCentsEvenly(amountCents, shares.size)
-            val resolvedShares = shares.mapIndexed { index, share -> share.copy(amount = shareCents[index] / 100.0) }
             check(shareCents.sum() == amountCents) {
                 "Split shares (${shareCents.sum() / 100.0}) must sum to expense amount (${amountCents / 100.0})"
             }
 
-            expensesTable.insert(
-                SplitExpenseDto(
-                    id             = expenseId,
-                    groupId        = groupId,
-                    description    = description,
-                    amount         = amountCents / 100.0,
-                    paidByMemberId = paidByMemberId,
-                    expenseDate    = date.toString(),
-                    createdAt      = now.toString()
-                )
-            )
-            val shareDtos = resolvedShares.map {
-                SplitExpenseShareDto(
-                    id        = uuid4().toString(),
-                    expenseId = expenseId,
-                    memberId  = it.memberId,
-                    amount    = it.amount
-                )
-            }
-            if (shareDtos.isNotEmpty()) {
-                try {
-                    retryTransient { sharesTable.insert(shareDtos) }
-                } catch (e: Exception) {
-                    runCatching { expensesTable.delete { filter { eq("id", expenseId) } } }
-                    throw e
+            // Atomic server-side RPC (expense + shares in one transaction, membership and
+            // sum-exactness validated on the server) — no more shareless expenses on failure.
+            val result = db.postgrest.rpc(
+                function = "create_split_expense",
+                parameters = buildJsonObject {
+                    put("p_group_id", groupId)
+                    put("p_description", description)
+                    put("p_amount", amountCents / 100.0)
+                    put("p_paid_by", paidByMemberId)
+                    put("p_member_ids", JsonArray(shares.map { JsonPrimitive(it.memberId) }))
+                    put("p_share_amounts", JsonArray(shareCents.map { JsonPrimitive(it / 100.0) }))
+                    put("p_date", date.toString())
                 }
-            }
+            ).decodeAs<AddExpenseRpcResult>()
 
             SplitExpense(
-                id             = expenseId,
-                groupId        = groupId,
-                description    = description,
-                amount         = amountCents / 100.0,
-                paidByMemberId = paidByMemberId,
-                date           = date,
-                shares         = resolvedShares,
-                createdAt      = now
+                id             = result.id,
+                groupId        = result.groupId,
+                description    = result.description,
+                amount         = result.amount,
+                paidByMemberId = result.paidByMemberId,
+                date           = LocalDate.parse(result.expenseDate),
+                shares         = result.shares.map { it.toDomain() },
+                createdAt      = Instant.parse(result.createdAt)
             )
         }
     }
@@ -233,46 +210,29 @@ class SplitRepositoryImpl(
         date: LocalDate
     ): Settlement = withRepositoryErrorHandling("SplitRepository.recordSettlement") {
         withContext(Dispatchers.IO) {
-            val settlementId = uuid4().toString()
-            val now = Clock.System.now()
-
-            settlementsTable.insert(
-                SplitSettlementDto(
-                    id           = settlementId,
-                    groupId      = groupId,
-                    fromMemberId = fromMemberId,
-                    toMemberId   = toMemberId,
-                    amount       = amount.roundToCents(),
-                    settledDate  = date.toString(),
-                    createdAt    = now.toString()
-                )
-            )
+            // Atomic RPC with server-side validation: both parties are group members and
+            // the amount does not exceed the pairwise outstanding balance.
+            val result = db.postgrest.rpc(
+                function = "record_split_settlement",
+                parameters = buildJsonObject {
+                    put("p_group_id", groupId)
+                    put("p_from", fromMemberId)
+                    put("p_to", toMemberId)
+                    put("p_amount", amount.roundToCents())
+                    put("p_date", date.toString())
+                }
+            ).decodeAs<SplitSettlementDto>()
 
             Settlement(
-                id           = settlementId,
-                groupId      = groupId,
-                fromMemberId = fromMemberId,
-                toMemberId   = toMemberId,
-                amount       = amount.roundToCents(),
-                date         = date,
-                createdAt    = now
+                id           = result.id,
+                groupId      = result.groupId,
+                fromMemberId = result.fromMemberId,
+                toMemberId   = result.toMemberId,
+                amount       = result.amount,
+                date         = LocalDate.parse(result.settledDate),
+                createdAt    = Instant.parse(result.createdAt)
             )
         }
-    }
-
-    // ponytail: fixed 2-retry/300ms backoff, no jitter or circuit breaker — fine for a
-    // single second insert; revisit if this repo starts seeing sustained transient failures.
-    private suspend fun <T> retryTransient(times: Int = 2, block: suspend () -> T): T {
-        repeat(times) { attempt ->
-            try {
-                return block()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                delay(300L * (attempt + 1))
-            }
-        }
-        return block()
     }
 
     // ── Balances ──────────────────────────────────────────────────────
@@ -359,4 +319,34 @@ private fun SplitExpenseShareDto.toDomain() =
 @Serializable
 private data class MemberDisplayNameUpdate(
     @SerialName("display_name") val displayName: String
+)
+
+// RPC result shapes — the server functions return the exact JSON the client
+// previously assembled itself (supabase/migrations/0003_split_rpc.sql).
+
+@Serializable
+internal data class CreateGroupRpcResult(
+    val id         : String,
+    val name       : String,
+    @SerialName("created_by")
+    val createdBy  : String,
+    @SerialName("created_at")
+    val createdAt  : String,
+    val members    : List<GroupMemberDto>
+)
+
+@Serializable
+internal data class AddExpenseRpcResult(
+    val id             : String,
+    @SerialName("group_id")
+    val groupId        : String,
+    val description    : String,
+    val amount         : Double,
+    @SerialName("paid_by_member_id")
+    val paidByMemberId : String,
+    @SerialName("expense_date")
+    val expenseDate    : String,
+    @SerialName("created_at")
+    val createdAt      : String,
+    val shares         : List<SplitExpenseShareDto>
 )
