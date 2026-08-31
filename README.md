@@ -90,5 +90,12 @@ APK output is typically under `androidApp/build/outputs/apk/debug/`.
 
 Then open `iosApp/iosApp.xcodeproj` or `iosApp/iosApp.xcworkspace` in Xcode and run.
 
+iOS Supabase configuration: the shared code reads `SUPABASE_URL` and `SUPABASE_KEY`
+from the app's `Info.plist` (keys already declared with `$(SUPABASE_URL)` /
+`$(SUPABASE_KEY)` build-variable placeholders). Define those user-defined build
+settings in Xcode (Target → Build Settings → User-Defined, or an xcconfig file
+sourced from your untracked secrets) with the same values as `local.properties`.
+Session tokens are stored in the iOS Keychain (`KeychainSettings`).
+
 
 
