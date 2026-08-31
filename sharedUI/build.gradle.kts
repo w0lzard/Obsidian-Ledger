@@ -33,6 +33,10 @@ kotlin {
         namespace = "com.ryuken.obsidianledger"
         compileSdk = 36
         minSdk = 26
+
+        // Wires commonTest -> androidUnitTest into a host-runnable unit test
+        // variant; the KMP android plugin does not create one by default.
+        withHostTest { }
     }
 
     // iosX64 (Intel Mac simulator) dropped — FileKit ships no variant for it, and it's

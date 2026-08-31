@@ -5,14 +5,29 @@ limitAmount REAL NOT NULL,
 period TEXT NOT NULL DEFAULT 'MONTHLY',
 isDirty INTEGER NOT NULL DEFAULT 1,
 userId TEXT NOT NULL,
-deletedAt TEXT
+deletedAt TEXT,
+serverUpdatedAt TEXT
 );
 
 selectAll:
 SELECT * FROM BudgetEntity WHERE userId = :userId AND deletedAt IS NULL;
 
 selectDirty:
-SELECT * FROM BudgetEntity WHERE isDirty = 1;
+SELECT * FROM BudgetEntity WHERE isDirty = 1 AND userId = :userId;
+
+selectManifest:
+SELECT id, serverUpdatedAt, isDirty FROM BudgetEntity WHERE userId = :userId;
+
+insertRemote:
+INSERT OR IGNORE INTO BudgetEntity(id, categoryId, limitAmount, period, isDirty, userId, deletedAt, serverUpdatedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+applyRemote:
+UPDATE BudgetEntity SET categoryId = :categoryId, limitAmount = :limitAmount, period = :period, serverUpdatedAt = :serverUpdatedAt, isDirty = 0
+WHERE id = :id AND isDirty = 0;
+
+deleteCleanById:
+DELETE FROM BudgetEntity WHERE id = :id AND isDirty = 0;
 
 budgetWithSpending:
 SELECT b.*, COALESCE(SUM(t.amount), 0) AS spent

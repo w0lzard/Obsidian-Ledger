@@ -9,12 +9,18 @@ createdAt TEXT NOT NULL,
 updatedAt TEXT NOT NULL,
 isDirty INTEGER NOT NULL DEFAULT 1,
 userId TEXT NOT NULL,
-deletedAt TEXT
+deletedAt TEXT,
+serverUpdatedAt TEXT
 );
 selectAll: SELECT * FROM TransactionEntity WHERE userId = :userId AND deletedAt IS NULL ORDER BY date DESC, createdAt DESC;
 selectByMonth: SELECT * FROM TransactionEntity WHERE userId = :userId AND date LIKE :monthPrefix || '%' AND deletedAt IS NULL ORDER BY date DESC;
-selectDirty: SELECT * FROM TransactionEntity WHERE isDirty = 1;
-insert: INSERT OR REPLACE INTO TransactionEntity VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+selectDirty: SELECT * FROM TransactionEntity WHERE isDirty = 1 AND userId = :userId;
+selectManifest: SELECT id, serverUpdatedAt, isDirty FROM TransactionEntity WHERE userId = :userId;
+insert: INSERT OR REPLACE INTO TransactionEntity(id, amount, type, categoryId, date, note, createdAt, updatedAt, isDirty, userId, deletedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+insertRemote: INSERT OR IGNORE INTO TransactionEntity(id, amount, type, categoryId, date, note, createdAt, updatedAt, isDirty, userId, deletedAt, serverUpdatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+applyRemote: UPDATE TransactionEntity SET amount = :amount, type = :type, categoryId = :categoryId, date = :date, note = :note, createdAt = :createdAt, updatedAt = :updatedAt, serverUpdatedAt = :serverUpdatedAt, isDirty = 0 WHERE id = :id AND isDirty = 0;
+updateServerStamp: UPDATE TransactionEntity SET serverUpdatedAt = :serverUpdatedAt, isDirty = 0 WHERE id = :id;
+deleteCleanById: DELETE FROM TransactionEntity WHERE id = :id AND isDirty = 0;
 markClean: UPDATE TransactionEntity SET isDirty = 0 WHERE id = :id;
 markDeleted: UPDATE TransactionEntity SET deletedAt = :deletedAt, isDirty = 1 WHERE id = :id;
 purgeTombstones: DELETE FROM TransactionEntity WHERE deletedAt IS NOT NULL AND isDirty = 0;

@@ -7,12 +7,17 @@ import com.ryuken.obsidianledger.core.domain.model.Budget
 import com.ryuken.obsidianledger.core.domain.model.BudgetPeriod
 import com.ryuken.obsidianledger.core.domain.model.Category
 import com.ryuken.obsidianledger.core.domain.repository.BudgetRepository
+import com.ryuken.obsidianledger.core.domain.dto.BudgetDto
 import com.ryuken.obsidianledger.core.database.LedgerDatabase
+import com.ryuken.obsidianledger.core.sync.LocalManifestRow
+import com.ryuken.obsidianledger.core.sync.RemoteManifestRow
+import com.ryuken.obsidianledger.core.sync.SyncMerger
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import io.github.aakira.napier.Napier
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
@@ -94,7 +99,7 @@ class BudgetRepositoryImpl(
     // ── Sync ──────────────────────────────────────────────────────────
     override suspend fun syncPendingToRemote(userId: String): Unit = withRepositoryErrorHandling("BudgetRepository.syncPendingToRemote") {
         withContext(Dispatchers.IO) {
-            val dirty = budgetQueries.selectDirty().executeAsList()
+            val dirty = budgetQueries.selectDirty(userId = userId).executeAsList()
             if (dirty.isEmpty()) return@withContext
 
             val (tombstoned, live) = dirty.partition { it.deletedAt != null }
@@ -104,9 +109,73 @@ class BudgetRepositoryImpl(
             tombstoned.forEach {
                 supabaseClient.postgrest["budgets"].delete { filter { eq("id", it.id) } }
             }
+            // Rows are only marked clean after every remote operation above succeeded.
             dirty.forEach { budgetQueries.markClean(it.id) }
             budgetQueries.purgeTombstones()
         }
+    }
+
+    override suspend fun pullRemote(userId: String): Unit = withRepositoryErrorHandling("BudgetRepository.pullRemote") {
+        withContext(Dispatchers.IO) {
+            val remoteStamps = fetchRemoteStamps(userId)
+
+            val localStamps = budgetQueries.selectManifest(userId = userId).executeAsList()
+            val plan = SyncMerger.plan(
+                local  = localStamps.map { LocalManifestRow(it.id, it.serverUpdatedAt, it.isDirty == 1L) },
+                remote = remoteStamps.map { RemoteManifestRow(it.id, it.updatedAt) }
+            )
+
+            plan.toFetch.chunked(FETCH_CHUNK).forEach { chunk ->
+                val rows = supabaseClient.postgrest["budgets"].select {
+                    filter { eq("user_id", userId); isIn("id", chunk) }
+                }.decodeList<BudgetDto>()
+                db.transaction {
+                    rows.forEach { dto ->
+                        // Same guarded-apply pattern as transactions: never overwrite a
+                        // locally dirty row with pulled remote state.
+                        budgetQueries.insertRemote(
+                            id              = dto.id,
+                            categoryId      = dto.category_id,
+                            limitAmount     = dto.limit_amount,
+                            period          = dto.period,
+                            isDirty         = 0L,
+                            userId          = dto.user_id,
+                            deletedAt       = null,
+                            serverUpdatedAt = dto.updated_at
+                        )
+                        budgetQueries.applyRemote(
+                            id              = dto.id,
+                            categoryId      = dto.category_id,
+                            limitAmount     = dto.limit_amount,
+                            period          = dto.period,
+                            serverUpdatedAt = dto.updated_at
+                        )
+                    }
+                }
+            }
+
+            plan.toDeleteLocal.forEach { budgetQueries.deleteCleanById(it) }
+        }
+    }
+
+    private suspend fun fetchRemoteStamps(userId: String): List<BudgetStampDto> {
+        val stamps = mutableListOf<BudgetStampDto>()
+        var offset = 0L
+        while (true) {
+            val page = supabaseClient.postgrest["budgets"].select(columns = Columns.list("id", "updated_at")) {
+                filter { eq("user_id", userId) }
+                range(offset, offset + MANIFEST_PAGE - 1)
+            }.decodeList<BudgetStampDto>()
+            stamps += page
+            if (page.size < MANIFEST_PAGE) break
+            offset += MANIFEST_PAGE
+        }
+        return stamps
+    }
+
+    private companion object {
+        const val MANIFEST_PAGE = 1_000L
+        const val FETCH_CHUNK   = 500
     }
 }
 
@@ -121,23 +190,18 @@ private fun CategoryEntity.toDomain() =
         isCustom = isCustom == 1L
     )
 
-@Serializable
-private data class BudgetDto(
-    val id           : String,
-    @SerialName("category_id")
-    val categoryId   : String,
-    @SerialName("limit_amount")
-    val limitAmount  : Double,
-    val period       : String,
-    @SerialName("user_id")
-    val userId       : String
-)
-
 private fun BudgetEntity.toDto() =
     BudgetDto(
-        id          = id,
-        categoryId  = categoryId,
-        limitAmount = limitAmount,
-        period      = period,
-        userId      = userId
+        id           = id,
+        category_id  = categoryId,
+        limit_amount = limitAmount,
+        period       = period,
+        user_id      = userId
     )
+
+@Serializable
+private data class BudgetStampDto(
+    val id         : String,
+    @SerialName("updated_at")
+    val updatedAt  : String?
+)

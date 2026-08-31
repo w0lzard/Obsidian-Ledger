@@ -21,5 +21,10 @@ interface TransactionRepository {
     suspend fun add(transaction: Transaction)
     suspend fun update(transaction: Transaction)
     suspend fun delete(id: String)
+
+    /** Pushes dirty local rows and tombstoned deletes to the remote table. */
     suspend fun syncPendingToRemote(userId: String)
+
+    /** Pulls remote creates/updates/deletes into the local database (merge policy: SyncMerger). */
+    suspend fun pullRemote(userId: String)
 }

@@ -33,10 +33,14 @@ import com.ryuken.obsidianledger.features.splits.GroupDetailViewModel
 import com.ryuken.obsidianledger.navigation.RootComponent
 import com.ryuken.obsidianledger.navigation.RootComponent.Child
 import com.ryuken.obsidianledger.core.preferences.AppPreferences
+import com.ryuken.obsidianledger.core.domain.usecase.SyncUseCase
 import com.ryuken.obsidianledger.core.ui.theme.LedgerThemeConfig
 import com.ryuken.obsidianledger.core.ui.theme.LedgerCurrencyConfig
+import io.github.aakira.napier.Napier
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -79,6 +83,21 @@ fun App(
             is AuthSessionState.Initializing     -> Unit // unreachable, filtered above
         }
         isResolvingAuth = false
+    }
+
+    // Bidirectional sync on every (re)authentication: pulls cloud data into a fresh
+    // install / second device immediately instead of waiting for the WorkManager tick
+    // or a manual SyncNow. Fire-and-forget — the UI reads local SQLDelight and fills
+    // in reactively as rows land; failures are logged and picked up by the next tick.
+    val syncUseCase = koinInject<SyncUseCase>()
+    LaunchedEffect(Unit) {
+        authRepo.observeAuthState()
+            .filterIsInstance<AuthSessionState.Authenticated>()
+            .distinctUntilChangedBy { it.userId }
+            .collect { state ->
+                runCatching { syncUseCase(state.userId) }
+                    .onFailure { Napier.e("Sign-in sync failed; retrying on next scheduled tick", it) }
+            }
     }
 
     AppTheme(onThemeChanged = onThemeChanged) {
