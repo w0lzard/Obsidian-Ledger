@@ -19,6 +19,7 @@ import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import com.ryuken.obsidianledger.core.domain.repository.AuthRepository
 import com.ryuken.obsidianledger.core.domain.repository.AuthSessionState
+import com.ryuken.obsidianledger.core.ui.components.AUTH_RESOLVE_TIMEOUT_MS
 import com.ryuken.obsidianledger.core.ui.components.SPLASH_MIN_DURATION_MS
 import com.ryuken.obsidianledger.core.ui.components.SplashScreen
 import com.ryuken.obsidianledger.core.ui.theme.AppTheme
@@ -42,6 +43,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.runtime.LaunchedEffect
@@ -74,13 +76,22 @@ fun App(
 
     LaunchedEffect(Unit) {
         val resolvedAuthState = async {
-            authRepo.observeAuthState().first { it !is AuthSessionState.Initializing }
+            runCatching { authRepo.observeAuthState().first { it !is AuthSessionState.Initializing } }
+                .onFailure { Napier.e("Auth state resolution failed; routing to sign-in", it) }
+                .getOrElse { AuthSessionState.NotAuthenticated }
         }
         delay(SPLASH_MIN_DURATION_MS)
-        when (resolvedAuthState.await()) {
-            is AuthSessionState.Authenticated    -> root.replaceWithMain()
-            is AuthSessionState.NotAuthenticated -> root.replaceWithAuth()
-            is AuthSessionState.Initializing     -> Unit // unreachable, filtered above
+        // A stuck Initializing flow (storage read wedged, session refresh hanging) must
+        // not hold the splash hostage forever: route to sign-in after a hard timeout.
+        // Session restore reads local encrypted storage first, so a signed-in user
+        // resolves in milliseconds — only a genuinely broken session hits the timeout.
+        val resolved = withTimeoutOrNull(AUTH_RESOLVE_TIMEOUT_MS) { resolvedAuthState.await() }
+        if (resolved == null) {
+            Napier.e("Auth state did not resolve within ${AUTH_RESOLVE_TIMEOUT_MS}ms; routing to sign-in")
+        }
+        when (startupRoute(resolved)) {
+            StartupRoute.Main -> if (root.stack.value.active.configuration !is RootComponent.Config.Main) root.replaceWithMain()
+            StartupRoute.Auth -> if (root.stack.value.active.configuration !is RootComponent.Config.Auth) root.replaceWithAuth()
         }
         isResolvingAuth = false
     }
@@ -109,6 +120,17 @@ fun App(
         }
     }
 }
+
+/**
+ * Pure startup routing decision given the (possibly timed-out or failed) auth state.
+ * Anything that is not a confirmed Authenticated session routes to sign-in — the
+ * recoverable fallback: the user can retry, and a transient session glitch costs one
+ * extra login instead of a frozen splash.
+ */
+internal enum class StartupRoute { Main, Auth }
+
+internal fun startupRoute(resolved: AuthSessionState?): StartupRoute =
+    if (resolved is AuthSessionState.Authenticated) StartupRoute.Main else StartupRoute.Auth
 
 @OptIn(com.arkivanov.decompose.FaultyDecomposeApi::class)
 @Composable

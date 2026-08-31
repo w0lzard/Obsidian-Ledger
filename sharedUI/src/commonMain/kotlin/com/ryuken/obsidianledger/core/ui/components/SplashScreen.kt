@@ -41,6 +41,11 @@ import com.ryuken.obsidianledger.core.ui.theme.SpaceGroteskFamily
 // room to finish behind an intentional animation instead of a flash of the wrong screen.
 const val SPLASH_MIN_DURATION_MS = 2000L
 
+// Hard ceiling on how long the splash may wait for the auth state to leave Initializing.
+// Session restore reads local encrypted storage first, so a signed-in user resolves in
+// milliseconds; only a wedged session/refresh hits this and falls back to sign-in.
+const val AUTH_RESOLVE_TIMEOUT_MS = 10_000L
+
 @Composable
 fun SplashScreen(
     durationMillis: Long = SPLASH_MIN_DURATION_MS,
