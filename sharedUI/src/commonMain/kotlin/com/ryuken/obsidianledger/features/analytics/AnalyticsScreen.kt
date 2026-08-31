@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,10 +18,12 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ryuken.obsidianledger.core.ui.components.MonthSelector
 import com.ryuken.obsidianledger.core.ui.theme.AmountTextStyle
 import com.ryuken.obsidianledger.core.ui.theme.LedgerTheme
 import com.ryuken.obsidianledger.core.ui.theme.TabularStyle
-import kotlinx.datetime.Month
+import com.ryuken.obsidianledger.core.domain.helper.nextMonth
+import com.ryuken.obsidianledger.core.domain.helper.previousMonth
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -38,34 +42,50 @@ fun AnalyticsScreen(
     ) {
         // ── Header ──────────────────────────────────────────────
         item {
-            Text(
-                text = "ANALYTICS",
-                style = MaterialTheme.typography.labelLarge.copy(
-                    letterSpacing = 3.sp,
-                    color = colors.accentStart
-                )
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "Spending Insights",
-                style = MaterialTheme.typography.headlineLarge,
-                color = colors.onSurfacePrimary
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "ANALYTICS",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            letterSpacing = 3.sp,
+                            color = colors.accentStart
+                        )
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Spending Insights",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = colors.onSurfacePrimary
+                    )
+                }
+                IconButton(onClick = { viewModel.onIntent(AnalyticsIntent.Refresh) }) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        tint = colors.onSurfaceSecondary
+                    )
+                }
+            }
         }
 
         // ── Month Selector ──────────────────────────────────────
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "${Month(state.selectedMonth).name.take(3)} ${state.selectedYear}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.onSurfacePrimary
-                )
-            }
+            MonthSelector(
+                year  = state.selectedYear,
+                month = state.selectedMonth,
+                onPrevious = {
+                    val (y, m) = previousMonth(state.selectedYear, state.selectedMonth)
+                    viewModel.onIntent(AnalyticsIntent.MonthChanged(month = m, year = y))
+                },
+                onNext = {
+                    val (y, m) = nextMonth(state.selectedYear, state.selectedMonth)
+                    viewModel.onIntent(AnalyticsIntent.MonthChanged(month = m, year = y))
+                }
+            )
         }
 
         // ── Total Outflow Card ──────────────────────────────────

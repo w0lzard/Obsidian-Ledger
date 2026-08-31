@@ -69,6 +69,7 @@ koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin-and
 # Utils
 datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 napier = { module = "io.github.aakira:napier", version.ref = "napier" }
 uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
 serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }

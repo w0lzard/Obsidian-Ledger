@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,7 +29,10 @@ import com.ryuken.obsidianledger.core.ui.theme.AmountTextStyle
 import com.ryuken.obsidianledger.core.ui.theme.LedgerTheme
 import com.ryuken.obsidianledger.core.ui.theme.TabularStyle
 import com.ryuken.obsidianledger.core.ui.components.AnimatedListItem
+import com.ryuken.obsidianledger.core.ui.components.MonthSelector
 import com.ryuken.obsidianledger.core.ui.components.animateDoubleAsState
+import com.ryuken.obsidianledger.core.domain.helper.nextMonth
+import com.ryuken.obsidianledger.core.domain.helper.previousMonth
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -48,20 +52,49 @@ fun DashboardScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // ── Greeting ────────────────────────────────────────
+            // ── Greeting + month navigation ─────────────────────
             item {
-                Column {
-                    Text(
-                        text = "${greeting()},",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurfaceSecondary
-                    )
-                    Text(
-                        text = state.userName,
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = colors.onSurfacePrimary
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "${greeting()},",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.onSurfaceSecondary
+                        )
+                        Text(
+                            text = state.userName,
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = colors.onSurfacePrimary
+                        )
+                    }
+                    IconButton(onClick = { viewModel.onIntent(DashboardIntent.Refresh) }) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = colors.onSurfaceSecondary
+                        )
+                    }
                 }
+            }
+
+            // ── Month selector ──────────────────────────────────
+            item {
+                MonthSelector(
+                    year  = state.selectedYear,
+                    month = state.selectedMonth,
+                    onPrevious = {
+                        val (y, m) = previousMonth(state.selectedYear, state.selectedMonth)
+                        viewModel.onIntent(DashboardIntent.MonthChanged(month = m, year = y))
+                    },
+                    onNext = {
+                        val (y, m) = nextMonth(state.selectedYear, state.selectedMonth)
+                        viewModel.onIntent(DashboardIntent.MonthChanged(month = m, year = y))
+                    }
+                )
             }
 
             // ── Hero Balance ────────────────────────────────────
