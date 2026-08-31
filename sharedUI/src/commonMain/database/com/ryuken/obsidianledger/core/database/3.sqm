@@ -1,0 +1,4 @@
+ALTER TABLE CategoryEntity ADD COLUMN updatedAt TEXT NOT NULL DEFAULT '';
+ALTER TABLE CategoryEntity ADD COLUMN serverUpdatedAt TEXT;
+ALTER TABLE CategoryEntity ADD COLUMN isDirty INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE CategoryEntity ADD COLUMN deletedAt TEXT;

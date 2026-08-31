@@ -5,11 +5,17 @@ CREATE TABLE CategoryEntity (
     colorHex TEXT    NOT NULL DEFAULT '#00C896',
     isCustom INTEGER NOT NULL DEFAULT 0,   -- 0 = default, 1 = user-created
     userId   TEXT,                          -- NULL for default categories
-    sortOrder INTEGER NOT NULL DEFAULT 0
+    sortOrder INTEGER NOT NULL DEFAULT 0,
+    updatedAt TEXT NOT NULL DEFAULT '',     -- last local modification
+    serverUpdatedAt TEXT,                   -- server updated_at last confirmed by pull/push
+    isDirty  INTEGER NOT NULL DEFAULT 0,    -- 0 = in sync, 1 = pending push
+    deletedAt TEXT                          -- tombstone for delete propagation
 );
 
--- Seed default categories (insert once on first launch)
-INSERT OR IGNORE INTO CategoryEntity VALUES
+-- Seed default categories (insert once on first launch; never synced — their ids
+-- are hardcoded and identical on every device, so they need no remote rows)
+INSERT OR IGNORE INTO CategoryEntity(id, name, emoji, colorHex, isCustom, userId, sortOrder)
+VALUES
     ('cat_food',        'Food & Dining',  '🍔', '#FF6B6B', 0, NULL, 0),
     ('cat_transport',   'Transport',      '🚕', '#4ECDC4', 0, NULL, 1),
     ('cat_shopping',    'Shopping',       '🛍', '#45B7D1', 0, NULL, 2),
@@ -25,8 +31,8 @@ INSERT OR IGNORE INTO CategoryEntity VALUES
 selectAll:
 SELECT *
 FROM   CategoryEntity
-WHERE  userId IS NULL
-    OR userId = :userId
+WHERE  (userId IS NULL OR userId = :userId)
+    AND deletedAt IS NULL
 ORDER BY sortOrder ASC, name ASC;
 
 selectById:
@@ -43,14 +49,45 @@ ORDER BY sortOrder ASC;
 selectCustomForUser:
 SELECT *
 FROM   CategoryEntity
-WHERE  userId = :userId
+WHERE  userId = :userId AND deletedAt IS NULL
 ORDER BY name ASC;
 
 insertCustom:
-INSERT INTO CategoryEntity
-VALUES (?, ?, ?, ?, 1, ?, ?);
+INSERT INTO CategoryEntity(id, name, emoji, colorHex, isCustom, userId, sortOrder, updatedAt, isDirty)
+VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?);
 
-delete:
-DELETE FROM CategoryEntity
-WHERE id      = :id
-  AND isCustom = 1;  -- prevent deleting default categories
+insertRemote:
+INSERT OR IGNORE INTO CategoryEntity(id, name, emoji, colorHex, isCustom, userId, sortOrder, serverUpdatedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+applyRemote:
+UPDATE CategoryEntity
+SET name = :name, emoji = :emoji, colorHex = :colorHex, sortOrder = :sortOrder, serverUpdatedAt = :serverUpdatedAt, isDirty = 0
+WHERE id = :id AND isDirty = 0;
+
+selectDirty:
+SELECT * FROM CategoryEntity WHERE isDirty = 1 AND userId = :userId;
+
+selectManifest:
+SELECT id, serverUpdatedAt, isDirty FROM CategoryEntity WHERE userId = :userId;
+
+markClean:
+UPDATE CategoryEntity SET isDirty = 0 WHERE id = :id;
+
+markDeleted:
+UPDATE CategoryEntity SET deletedAt = :deletedAt, isDirty = 1
+WHERE id = :id AND isCustom = 1;  -- prevent deleting default categories
+
+purgeTombstones:
+DELETE FROM CategoryEntity WHERE deletedAt IS NOT NULL AND isDirty = 0;
+
+deleteCleanById:
+DELETE FROM CategoryEntity WHERE id = :id AND isDirty = 0;
+
+-- Referential-integrity guards: a category still referenced by live rows must not
+-- be tombstoned, or synced transactions/budgets would point at nothing on other devices.
+isReferencedByTransaction:
+SELECT EXISTS(SELECT 1 FROM TransactionEntity WHERE categoryId = :id AND deletedAt IS NULL LIMIT 1);
+
+isReferencedByBudget:
+SELECT EXISTS(SELECT 1 FROM BudgetEntity WHERE categoryId = :id AND deletedAt IS NULL LIMIT 1);

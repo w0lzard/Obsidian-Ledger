@@ -106,7 +106,7 @@ val featureModule = module {
     factory { SignOutUseCase(authRepo = get()) }
     factory { ExportCsvUseCase(transactionRepo = get()) }
     factory { ImportCsvUseCase(transactionRepo = get(), categoryRepo = get()) }
-    factory { SyncUseCase(transactionRepo = get(), budgetRepo = get()) }
+    factory { SyncUseCase(transactionRepo = get(), budgetRepo = get(), categoryRepo = get()) }
     viewModel {
         ProfileViewModel(
             getProfile  = get(),

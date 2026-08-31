@@ -58,7 +58,10 @@ val coreModule = module {
 
     // ── Repositories ──────────────────────────────────────────────────
     single<CategoryRepository> {
-        CategoryRepositoryImpl(db = get())
+        CategoryRepositoryImpl(
+            db             = get(),
+            supabaseClient = get()
+        )
     }
     single<TransactionRepository> {
         TransactionRepositoryImpl(
