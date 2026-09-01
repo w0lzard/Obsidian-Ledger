@@ -3,6 +3,7 @@ package com.ryuken.obsidianledger.core.data
 import com.ryuken.obsidianledger.core.database.BudgetEntity
 import com.ryuken.obsidianledger.core.database.CategoryEntity
 import com.ryuken.obsidianledger.core.domain.error.withRepositoryErrorHandling
+import com.ryuken.obsidianledger.core.domain.helper.roundToCents
 import com.ryuken.obsidianledger.core.domain.model.Budget
 import com.ryuken.obsidianledger.core.domain.model.BudgetPeriod
 import com.ryuken.obsidianledger.core.domain.model.Category
@@ -62,7 +63,9 @@ class BudgetRepositoryImpl(
                         id          = row.id,
                         category    = cat,
                         limitAmount = row.limitAmount,
-                        spent       = row.spent,
+                        // Read boundary: SUM() over REAL storage can carry float drift;
+                        // round at the edge so percentUsed/status see exact cents.
+                        spent       = row.spent.roundToCents(),
                         period      = BudgetPeriod.valueOf(row.period),
                         userId      = row.userId,
                         isDirty     = row.isDirty == 1L

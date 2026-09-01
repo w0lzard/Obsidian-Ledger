@@ -2,6 +2,7 @@ package com.ryuken.obsidianledger.features.expenses
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ryuken.obsidianledger.core.domain.helper.roundToCents
 import com.benasher44.uuid.uuid4
 import com.ryuken.obsidianledger.core.domain.model.Transaction
 import com.ryuken.obsidianledger.core.domain.repository.AuthRepository
@@ -81,7 +82,9 @@ class AddTransactionViewModel(
                 val now = Clock.System.now()
                 val transaction = Transaction(
                     id = uuid4().toString(),
-                    amount = currentState.amountDouble,
+                    // Ingest boundary: clamp float keyboard input to an exact cent value
+                    // before it enters storage (docs/MoneyHandling.md).
+                    amount = currentState.amountDouble.roundToCents(),
                     type = currentState.type,
                     category = currentState.selectedCategory!!,
                     note = currentState.note.takeIf { it.isNotBlank() },
