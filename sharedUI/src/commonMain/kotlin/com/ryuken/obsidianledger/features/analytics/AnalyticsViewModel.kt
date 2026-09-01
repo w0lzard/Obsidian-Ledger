@@ -54,6 +54,7 @@ class AnalyticsViewModel(
                     sparklineData     = sparkline,
                     categoryBreakdown = summary.categoryBreakdown,
                     totalIncome       = summary.totalIncome,
+                    transactionCount  = summary.transactionCount,
                     isLoading         = false
                 )
             }

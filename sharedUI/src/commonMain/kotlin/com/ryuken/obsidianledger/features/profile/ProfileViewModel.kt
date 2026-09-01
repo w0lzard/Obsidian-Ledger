@@ -62,7 +62,7 @@ class ProfileViewModel(
                 currency             = appPrefs.getString(AppPreferences.KEY_CURRENCY, "INR (₹)"),
                 theme                = appPrefs.getString(AppPreferences.KEY_THEME, "System"),
                 notificationsEnabled = appPrefs.getBoolean(AppPreferences.KEY_NOTIFICATIONS, true),
-                lastSyncTimestamp    = appPrefs.getString("last_sync", "Never")
+                lastSyncTimestamp    = appPrefs.getString(AppPreferences.KEY_LAST_SYNC, "")
             )
         }
 
@@ -256,8 +256,9 @@ class ProfileViewModel(
             try {
                 syncUseCase(userId)
 
-                val nowStr = "Just now"
-                appPrefs.putString("last_sync", nowStr)
+                // Persist the actual instant; the UI derives display text from it.
+                val nowStr = Clock.System.now().toString()
+                appPrefs.putString(AppPreferences.KEY_LAST_SYNC, nowStr)
                 _state.update { it.copy(lastSyncTimestamp = nowStr) }
 
                 _effect.send(ProfileEffect.SyncComplete)

@@ -313,7 +313,9 @@ private fun SettleUpDialog(
         confirmButton = {
             TextButton(onClick = {
                 val amount = amountText.toDoubleOrNull() ?: return@TextButton
-                if (amount > 0) onConfirm(amount, iPaid)
+                // Local validation mirrors the business invariant in RecordSettlementUseCase
+                // (and the server RPC): 0 < amount <= outstanding balance.
+                if (amount > 0 && amount <= suggestedAmount + 0.005) onConfirm(amount, iPaid)
             }) {
                 Text("SETTLE", color = colors.accentStart)
             }

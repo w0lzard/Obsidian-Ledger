@@ -109,7 +109,8 @@ class AuthViewModel(
                     AuthTab.SIGN_IN -> signIn(s.email, s.password)
                     AuthTab.CREATE_ACCOUNT -> signUp(s.email, s.password, s.displayName)
                 }
-                _effect.send(AuthEffect.AuthSuccess)
+                // AuthSuccess is emitted by the sessionStatus collector once Supabase
+                // confirms the session — same single path as the Google flow above.
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

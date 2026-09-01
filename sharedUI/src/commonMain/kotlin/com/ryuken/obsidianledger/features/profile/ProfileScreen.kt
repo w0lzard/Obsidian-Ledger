@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
+import com.ryuken.obsidianledger.core.domain.helper.relativeTime
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -282,7 +283,7 @@ fun ProfileScreen(
                         SettingsRow(
                             icon = Icons.Default.Sync,
                             label = "Sync Status",
-                            value = state.lastSyncTimestamp,
+                            value = relativeTime(state.lastSyncTimestamp),
                             colors = colors,
                             onClick = { viewModel.onIntent(ProfileIntent.SyncNow) }
                         )

@@ -10,8 +10,8 @@ data class AnalyticsState(
     val sparklineData       : List<Double> = emptyList(),
     val categoryBreakdown   : Map<String, Double> = emptyMap(),
     val totalIncome         : Double = 0.0,
-    val isLoading           : Boolean = true,
-    val error               : String? = null
+    val transactionCount    : Int = 0,
+    val isLoading           : Boolean = true
 ) {
     val monthOverMonthDelta: Double
         get() = if (previousOutflow > 0) ((totalOutflow - previousOutflow) / previousOutflow) * 100 else 0.0
@@ -19,6 +19,8 @@ data class AnalyticsState(
     val savingsRate: Double
         get() = if (totalIncome > 0) ((totalIncome - totalOutflow) / totalIncome) * 100 else 0.0
 
+    // Average per TRANSACTION, not per category (the old formula divided by the
+    // number of distinct categories in the breakdown).
     val avgTransaction: Double
-        get() = if (categoryBreakdown.isNotEmpty()) totalOutflow / categoryBreakdown.size else 0.0
+        get() = if (transactionCount > 0) totalOutflow / transactionCount else 0.0
 }

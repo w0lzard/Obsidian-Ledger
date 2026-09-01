@@ -95,7 +95,8 @@ class TransactionRepositoryImpl(
                 MonthlySummary(
                     totalExpense      = expense,
                     totalIncome       = income,
-                    categoryBreakdown = breakdown
+                    categoryBreakdown = breakdown,
+                    transactionCount  = list.size
                 )
             }
             .catch { e ->
