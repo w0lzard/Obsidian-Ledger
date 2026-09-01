@@ -54,6 +54,11 @@ These screenshots are stylized placeholders generated for the repository and can
 
 ## Getting Started
 
+> **Deploy order:** apply every SQL file in `supabase/migrations/` (0001 → 0004,
+> in order, via the Supabase SQL editor) BEFORE installing an app build from this
+> branch. The client's pull sync, category sync, split RPCs, and reset RLS policies
+> all depend on them. See `docs/SyncContract.md` and `docs/SecurityAudit.md`.
+
 ### Prerequisites
 
 - JDK 17 or newer
