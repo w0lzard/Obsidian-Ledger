@@ -7,8 +7,10 @@ class HelpersTest {
 
     @Test
     fun roundToCents_dropsFloatingPointDrift() {
-        val drifted = (0.1 + 0.2) * 100 // classic Double drift, != 30.0 exactly
-        assertEquals(0.3, drifted.let { 0.1 + 0.2 }.roundToCents())
+        val drifted = 0.1 + 0.2 // classic Double drift: 0.30000000000000004
+        assertEquals(0.3, drifted.roundToCents())
+        // And the drift is genuinely there to be dropped — the test names a real property.
+        assertEquals(true, drifted != 0.3)
     }
 
     @Test

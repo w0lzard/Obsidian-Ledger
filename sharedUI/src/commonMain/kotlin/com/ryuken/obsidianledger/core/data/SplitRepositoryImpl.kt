@@ -256,28 +256,23 @@ class SplitRepositoryImpl(
         expenses: List<SplitExpense>,
         settlements: List<SplitSettlementDto>
     ): List<MemberBalance> {
-        val net = mutableMapOf<String, Double>()
-        group.members.forEach { net[it.id] = 0.0 }
-
-        expenses.forEach { expense ->
-            net[expense.paidByMemberId] = (net[expense.paidByMemberId] ?: 0.0) + expense.amount
-            expense.shares.forEach { share ->
-                net[share.memberId] = (net[share.memberId] ?: 0.0) - share.amount
-            }
-        }
-        settlements.forEach { settlement ->
-            net[settlement.fromMemberId] = (net[settlement.fromMemberId] ?: 0.0) + settlement.amount
-            net[settlement.toMemberId] = (net[settlement.toMemberId] ?: 0.0) - settlement.amount
-        }
-
-        return group.members.map { member ->
-            MemberBalance(
-                memberId    = member.id,
-                displayName = member.displayName,
-                email       = member.email,
-                netAmount   = (net[member.id] ?: 0.0).roundToCents()
+        // Ledger rules live in the pure, unit-tested helper.
+        val domainSettlements = settlements.map {
+            Settlement(
+                id           = it.id,
+                groupId      = it.groupId,
+                fromMemberId = it.fromMemberId,
+                toMemberId   = it.toMemberId,
+                amount       = it.amount,
+                date         = LocalDate.parse(it.settledDate),
+                createdAt    = Instant.parse(it.createdAt)
             )
         }
+        return com.ryuken.obsidianledger.core.domain.helper.computeBalances(
+            members     = group.members,
+            expenses    = expenses,
+            settlements = domainSettlements
+        )
     }
 }
 
