@@ -42,7 +42,6 @@ class FakeAuthRepository(
     override fun isSignedIn(): Boolean = authState.value is AuthSessionState.Authenticated
     override fun observeUserId(): Flow<String?> = authState.map { (it as? AuthSessionState.Authenticated)?.userId }
     override fun observeAuthState(): Flow<AuthSessionState> = authState
-    override fun getSessionStatusString(): String = authState.value.toString()
 }
 
 class FakeTransactionRepository : TransactionRepository {

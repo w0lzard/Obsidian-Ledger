@@ -119,9 +119,6 @@ class AuthRepositoryImpl(
     override fun isSignedIn(): Boolean =
         supabaseClient.auth.currentSessionOrNull() != null
 
-    override fun getSessionStatusString(): String =
-        supabaseClient.auth.sessionStatus.value.toString()
-
     override fun observeUserId(): Flow<String?> =
         supabaseClient.auth.sessionStatus
             .map { status ->

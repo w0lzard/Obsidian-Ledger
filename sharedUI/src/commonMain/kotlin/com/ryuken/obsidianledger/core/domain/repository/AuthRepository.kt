@@ -26,5 +26,4 @@ interface AuthRepository {
     fun isSignedIn(): Boolean
     fun observeUserId(): Flow<String?>
     fun observeAuthState(): Flow<AuthSessionState>
-    fun getSessionStatusString(): String
 }
