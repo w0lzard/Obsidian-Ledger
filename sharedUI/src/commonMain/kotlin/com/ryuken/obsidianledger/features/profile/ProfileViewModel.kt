@@ -165,6 +165,8 @@ class ProfileViewModel(
                         error       = null
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Napier.e("Profile load failed: ${e.message}", e)
                 val message = when {
@@ -259,6 +261,8 @@ class ProfileViewModel(
                 _state.update { it.copy(lastSyncTimestamp = nowStr) }
 
                 _effect.send(ProfileEffect.SyncComplete)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _effect.send(ProfileEffect.Error(e.message ?: "Sync failed"))
             }
@@ -271,6 +275,8 @@ class ProfileViewModel(
                 signOut()
                 syncCoordinator.onSignedOut()
                 _effect.send(ProfileEffect.SignedOut)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _effect.send(ProfileEffect.Error(e.message ?: "Sign out failed"))
             }
@@ -303,6 +309,8 @@ class ProfileViewModel(
                 }
                 _state.update { it.copy(isEditProfileDialogOpen = false, error = null) }
                 _effect.send(ProfileEffect.ShowMessage("Profile updated successfully"))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _effect.send(ProfileEffect.Error(e.message ?: "Failed to update profile"))
             } finally {
@@ -318,6 +326,8 @@ class ProfileViewModel(
                 authRepo.updatePassword(pass)
                 _state.update { it.copy(isChangePasswordDialogOpen = false, error = null) }
                 _effect.send(ProfileEffect.ShowMessage("Password updated successfully"))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _effect.send(ProfileEffect.Error(e.message ?: "Failed to update password"))
             } finally {
